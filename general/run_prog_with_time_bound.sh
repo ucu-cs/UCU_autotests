@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 function run_program_time_bound() {
 	# such strange names used to avoid problems with variable names
@@ -16,11 +16,15 @@ function run_program_time_bound() {
 	# Main body of the function
 	#
 	
-	local l_LOGFILE=$(mktemp /tmp/tmpfileintegral.XXXXXX)
-	$1 > "$l_LOGFILE" 2>&1 &
+	local l_LOGFILE=$(mktemp /tmp/tmpflabs.XXXXXX)
+	local l_ERRFILE=$(mktemp /tmp/tmpferrfile.XXXXXX)
+	
+	# Redirect output, show all errors
+	$1 1> "$l_LOGFILE" &
 	local l_PID=$!
 
 	l_START_TIME=$(date +%s)
+	cat "$l_ERRFILE"
 	while kill -o "$l_PID" > /dev/null 2>&1; do
 		l_CURR_TIME=$(date +%s)
 		l_ELAP_TIME=$((l_CURR_TIME - l_STAR_TIME))
@@ -35,6 +39,7 @@ function run_program_time_bound() {
 	done
 	
 	wait "$l_PID"
+	echo "$l_ERRFILE"
     l_EXIT_CODE=$?
 
 	# Save the exit code and output of the program in the "exit_code" and "out" variables

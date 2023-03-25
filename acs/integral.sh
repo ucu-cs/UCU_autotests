@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 set -o errexit
 set -o pipefail
@@ -6,7 +6,7 @@ set -o pipefail
 # Set the default maximum run time for the program in seconds
 MAX_RUNTIME=20
 # And some other important variables
-THREADS=1
+ADDITIONAL=""
 progname=""
 
 # Create configure files
@@ -55,11 +55,13 @@ POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
-    echo "Usage: ./start.sh [program name] [options]
-  Options:
+    echo "Usage: test_integral [program name] [options]
 	-h	--help		Show help message.
-	-t	--threads	Number of threads.
-	-m	--max-runtime	Maximum runtime for one iteration, in [s]."
+	-a	--additional	Some additional arguments to the exec file. String, in quotes.
+	-m	--max-runtime	Maximum runtime for one iteration, in [s]. Default - 20
+Details:
+	Example of additional arguments:
+	test_integral ./bin/integrate conf_file \"n_threads, n_points\""
     exit 0
     ;;
   \?)
@@ -75,14 +77,14 @@ while [[ $# -gt 0 ]]; do
       exit 1
     fi
     ;;
-  -t | --threads)
-    if [ "$2" -eq "$2" ] 2>/dev/null; then
-      THREADS=$2
+  -a | --additional)
+    if [ ! -z "$2" ] 2>/dev/null; then
+      ADDITIONAL=$2
       shift 2
     else
-      echo "Option --threads requires an numerical argument - number of threads" >&2
-      exit 1
-    fi
+	  echo "Option --additional requires a string argument." >&2
+	  exit 1
+	fi
     ;;
   :)
     echo "Option -$OPTARG requires an numerical argument." >&2
@@ -90,7 +92,7 @@ while [[ $# -gt 0 ]]; do
     ;;
   *)
 	POSITIONAL_ARGS+=("$1") # save positional arg
-    break
+	shift 1
     ;;
   esac
 done
@@ -121,9 +123,9 @@ source run_prog_with_time_bound
 for ((counter = 1; counter <= 3; counter++)); do
 	# return values will be stored in OUT_LINES array
 	OUT_LINES=()
-	command="$progname $counter ${CONFS[$((counter - 1))]} $THREADS"
+	command="$progname $counter ${CONFS[$((counter - 1))]} $ADDITIONAL"
 
-	run_program_time_bound "$command" "$maxt"
+	run_program_time_bound "$command" "$MAX_RUNTIME"
 
     RESULT=$(printf "%.11f"'\n' ${OUT_LINES[0]} )
     ABS_ERROR=${OUT_LINES[1]}
