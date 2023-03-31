@@ -10,6 +10,8 @@ echo "Password needed to create correct symlinks and make it possible to run tes
 sudo ln -sf $PWD/general/run_prog_with_time_bound.sh /usr/local/bin/run_prog_with_time_bound
 sudo chmod +x /usr/local/bin/run_prog_with_time_bound
 
+sudo ln -sf $PWD/general/compile.sh /usr/local/bin/test_compilation
+sudo chmod +x /usr/local/bin/test_compilation
 sudo ln -sf $PWD/acs/integral.sh /usr/local/bin/test_integral
 sudo chmod +x /usr/local/bin/test_integral
 
