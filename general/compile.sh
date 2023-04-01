@@ -3,7 +3,7 @@
 #
 # Example script -- boilerplate to automate compilation (and, possibly, execution) the lab project.
 #
-
+set -e
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -18,8 +18,14 @@ MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 #####
+on_error() {
+	echo -e "$PREFIX restoring the CMakeLists.txt."
+	mv backup_CMakeLists.txt CMakeLists.txt
+}
+# To restore the CMakeLists.txt after compilation
+trap 'on_error' EXIT
+####
 #
-PROJECT_NAME_INIT=$(cat CMakeLists.txt | grep "set(PROJECT_NAME")
 PREFIX="$MAGENTA[APPS testing compilation]: ${NC}"
 install_prefix=".."
 WERR="ON"
@@ -67,10 +73,14 @@ case "${UNAME}" in
 	*)			echo "Unknown machine; only MacOS and Linux are supported;";;
 esac
 
+### 
+# backup a CMakeLists.txt
+
+cp CMakeLists.txt backup_CMakeLists.txt
+
 ###############################################
 ######### Useful functions declaration ########
 ###############################################
-
 
 function f_set_pvs() {
 	sed -i '/ENABLE_PVS_STUDIO/d' CMakeLists.txt
@@ -114,7 +124,7 @@ f_set_proj_name "release"
 mkdir -p ./cmake-build-release
 (
     pushd ./cmake-build-release > /dev/null || exit 1
-    echo -e "$PREFIX${RED}Compiling Release...${NC}\n"
+    echo -e "$PREFIX${GREEN}Compiling Release...${NC}\n"
     cmake -DPROJECT_NAME="release" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
     cmake --build . || exit 1
     cmake --install . || exit 1
@@ -130,7 +140,7 @@ if [[ "$machine" -eq 0 ]]; then
 	mkdir -p ./cmake-build-asan-ubsan-pvs
 	(
 	    pushd ./cmake-build-asan-ubsan-pvs > /dev/null || exit 1
-	    echo -e "$PREFIX${RED}Compiling with ASAN, UBSan and PVS...${NC}\n"
+	    echo -e "$PREFIX${GREEN}Compiling with ASAN, UBSan and PVS...${NC}\n"
 	    cmake -DPROJECT_NAME="run_with_asan_ubsan" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
 	    cmake --build . || exit 1
 	    cmake --install . || exit 1
@@ -143,7 +153,7 @@ if [[ "$machine" -eq 0 ]]; then
 	mkdir -p ./cmake-build-tsan
 	(
 	    pushd ./cmake-build-tsan > /dev/null || exit 1
-	    echo -e "$PREFIX${RED}Compiling TSan...${NC}"
+	    echo -e "$PREFIX${GREEN}Compiling TSan...${NC}"
 	    cmake -DPROJECT_NAME="run_with_tsan" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
 	    cmake --build . || exit 1
 	    cmake --install . || exit 1
@@ -157,7 +167,7 @@ elif [[ "$machine" -eq 1 ]]; then
 	mkdir -p ./cmake-build-msan
 	(
 	    pushd ./cmake-build-msan > /dev/null || exit 1
-	    echo "$PREFIX${RED}Compiling MSAN...${NC}"
+	    echo "$PREFIX${GREEN}Compiling MSAN...${NC}"
 	    cmake -DPROJECT_NAME="run_with_msan" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
 	    cmake --build . || exit 1
 	    cmake --install . || exit 1
