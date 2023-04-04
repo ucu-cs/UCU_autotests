@@ -137,11 +137,12 @@ if [[ "$machine" -eq 0 ]]; then
 	f_set_pvs "ON"
 	f_set_asan "ON"
 	f_set_ubsan "ON"
+	f_set_proj_name "run_with_asan_ubsan"
 	mkdir -p ./cmake-build-asan-ubsan-pvs
 	(
 	    pushd ./cmake-build-asan-ubsan-pvs > /dev/null || exit 1
 	    echo -e "$PREFIX${GREEN}Compiling with ASAN, UBSan and PVS...${NC}\n"
-	    cmake -DPROJECT_NAME="run_with_asan_ubsan" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
+	    cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
 	    cmake --build . || exit 1
 	    cmake --install . || exit 1
 	    popd
@@ -150,11 +151,12 @@ if [[ "$machine" -eq 0 ]]; then
 	f_set_asan "OFF"
 	f_set_ubsan "OFF"
 	f_set_tsan "ON"
+	f_set_proj_name "run_with_tsan"
 	mkdir -p ./cmake-build-tsan
 	(
 	    pushd ./cmake-build-tsan > /dev/null || exit 1
 	    echo -e "$PREFIX${GREEN}Compiling TSan...${NC}"
-	    cmake -DPROJECT_NAME="run_with_tsan" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
+	    cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
 	    cmake --build . || exit 1
 	    cmake --install . || exit 1
 	    popd
@@ -164,11 +166,12 @@ elif [[ "$machine" -eq 1 ]]; then
 	# MacOS
 	f_set_pvs "ON"
 	f_set_msan "ON"
+	f_set_proj_name "run_with_msan"
 	mkdir -p ./cmake-build-msan
 	(
 	    pushd ./cmake-build-msan > /dev/null || exit 1
 	    echo "$PREFIX${GREEN}Compiling MSAN...${NC}"
-	    cmake -DPROJECT_NAME="run_with_msan" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
+	    cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${install_prefix}" .. || exit 1
 	    cmake --build . || exit 1
 	    cmake --install . || exit 1
 	    popd
