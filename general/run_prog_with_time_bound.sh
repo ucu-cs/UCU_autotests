@@ -39,7 +39,7 @@ function run_program_time_bound() {
 	done
 	
 	wait "$l_PID"
-	echo "$l_ERRFILE"
+	cat "$l_ERRFILE"
     l_EXIT_CODE=$?
 
 	# Save the exit code and output of the program in the "exit_code" and "out" variables
