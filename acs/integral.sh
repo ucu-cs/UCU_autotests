@@ -14,7 +14,7 @@ declare -a CONFS
 CONFS[0]=$(mktemp /tmp/conf1.XXXXXX)
 CONFS[1]=$(mktemp /tmp/conf2.XXXXXX)
 CONFS[2]=$(mktemp /tmp/conf3.XXXXXX)
-
+export LC_NUMERIC="en_US.UTF-8"
 {
     printf '%s\n' 'abs_err     = 0.0005'
     printf '%s\n' 'rel_err     = 0.00000002'
