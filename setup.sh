@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # Script for setting up everything necessary.
 # Requires password
@@ -14,6 +14,8 @@ sudo ln -sf $PWD/general/compile.sh /usr/local/bin/test_compilation
 sudo chmod +x /usr/local/bin/test_compilation
 sudo ln -sf $PWD/acs/integral.sh /usr/local/bin/test_integral
 sudo chmod +x /usr/local/bin/test_integral
+sudo ln -sf $PWD/acs/words.sh /usr/local/bin/test_words_count
+sudo chmod +x /usr/local/bin/test_words_count
 
 echo "Now do \"source ~/.bashrc\" or \"source ~/.zshrc\" and use 'test_integral' from any location" 
 
