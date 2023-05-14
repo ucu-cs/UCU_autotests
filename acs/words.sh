@@ -6,6 +6,8 @@ set -o pipefail
 # Set the default maximum run time for the program in seconds
 MAX_RUNTIME=500
 N_TIMES=3
+N_MAX_THREADS=4
+N_MAX_MERGES=4
 # And some other important variables
 ADDITIONAL=""
 progname=""
@@ -24,7 +26,7 @@ shopt -u nullglob
 N_TEST_CASES=${#indir_array[@]}
 # And program options
 POSITIONAL_ARGS=()
-STATUS=0
+STATUS=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -98,7 +100,7 @@ source run_prog_with_time_bound
 
 # For each function (without additional)
 OUT_DIR=$(mktemp -d /tmp/results.XXXXXX)
-for ((counter = 0; counter < $N_TEST_CASES; counter++)); do
+for ((counter=0; counter < $N_TEST_CASES; counter++)); do
 	echo "Test case $counter ..."
 	TOTAL_TIME_N_RUNS=0
 	# Create configure files
@@ -110,6 +112,12 @@ for ((counter = 0; counter < $N_TEST_CASES; counter++)); do
 	    printf '%s\n' 'archives_extensions=	.zip'
 	    printf '%s\n' 'indexing_extensions=	.txt'
 	    printf '%s\n' 'max_file_size=		10000000'
+
+	    printf '%s\n' 'indexing_threads=	1'
+	    printf '%s\n' 'merging_threads=		1'
+		printf '%s\n' 'filenames_queue_size= 10000'
+		printf '%s\n' 'raw_files_queue_size= 1000'
+		printf '%s\n' 'dictionaries_queue_size= 1000'
 	} >> "$CONF_FILE"
 	
 	# return values will be stored in OUT_LINES array
@@ -118,41 +126,55 @@ for ((counter = 0; counter < $N_TEST_CASES; counter++)); do
 	run_program_time_bound "$command" "$MAX_RUNTIME"
 	if ! diff <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "$OUT_DIR/out_by_n_$counter-0"); then 
 			echo "MISTAKE! Files by a and by n are not equal;"
-			STATUS=1
+			STATUS=true
 	fi
 
 	if ! diff -w <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "${CORRECT_RES_FNAMES[$counter]}"); then
 			echo "MISTAKE! Output is not correct; expected output: "
 			cat ${CORRECT_RES_FNAMES[$counter]}
-			STATUS=1
+			STATUS=true
 	fi
 
-	for ((n_time = 1; n_time < $N_TIMES; n_time++)); do
+	for ((n_time=0; n_time < $N_TIMES; n_time++)); do
+		echo "Test case: $counter, iteration: $n_time"
+		for ((n_threads = 1; n_threads < $N_MAX_THREADS; n_threads++)); do
+		for ((n_merge = 1; n_merge < $N_MAX_MERGES; n_merge++)); do
+		# echo "Test case: $counter, iteration: $n_time; thread $n_threads; merging threads: $n_merge."
+
 		# Create configure files
+		l_name_a="$OUT_DIR/out_by_a_$counter-$n_time-$n_threads-$n_merge"
+		l_name_n="$OUT_DIR/out_by_n_$counter-$n_time-$n_threads-$n_merge"
 		CONF_FILE=$(mktemp /tmp/conf.XXXXXX)
 		{
 		    printf '%s\n' "indir=	\"${indir_array[$counter]}\""
-		    printf '%s\n' "out_by_a=	\"$OUT_DIR/out_by_a_$counter-$n_time\""
-		    printf '%s\n' "out_by_n=	\"$OUT_DIR/out_by_n_$counter-$n_time\""
+		    printf '%s\n' "out_by_a=	\"$l_name_a\""
+		    printf '%s\n' "out_by_n=	\"$l_name_n\""
 		    printf '%s\n' 'archives_extensions=	.zip'
 		    printf '%s\n' 'indexing_extensions=	.txt'
 		    printf '%s\n' 'max_file_size=		10000000'
+	
+		    printf '%s\n' 'indexing_threads=	1'
+		    printf '%s\n' 'merging_threads=		1'
+			printf '%s\n' 'filenames_queue_size= 10000'
+			printf '%s\n' 'raw_files_queue_size= 1000'
+			printf '%s\n' 'dictionaries_queue_size= 1000'
 		} >> "$CONF_FILE"
 
 		# return values will be stored in OUT_LINES array
 		OUT_LINES=()
 		command="$progname $CONF_FILE"
 		run_program_time_bound "$command" "$MAX_RUNTIME"
-		
 
-		if ! diff "$OUT_DIR/out_by_a_$counter-$n_time" "$OUT_DIR/out_by_a_$counter-0" ; then 
+		if ! diff "$l_name_a" "$OUT_DIR/out_by_a_$counter-0" ; then 
 			echo "MISTAKE! Files sorted by alphabet are not equal;"
-			STATUS=1
+			STATUS=true
 		fi	
-		if ! diff "$OUT_DIR/out_by_n_$counter-$n_time" "$OUT_DIR/out_by_n_$counter-0" ; then 
+		if ! diff "$l_name_n" "$OUT_DIR/out_by_n_$counter-0" ; then 
 			echo "MISTAKE! Files sorted by number of occurrences are not equal;"
-			STATUS=1
+			STATUS=true
 		fi	
+		done
+		done
 	done
 
     #TOTAL_TIME=${OUT_LINES[1]}
@@ -171,3 +193,10 @@ for ((counter = 0; counter < $N_TEST_CASES; counter++)); do
 #    fi
   
 done
+
+if $STATUS; then
+	echo "MISTAKE; At least one test failed."
+else
+	echo "Good; All tests passed."
+fi
+
