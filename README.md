@@ -2,11 +2,12 @@
 The project that should unify all tests in UCU PoCO, ACS, OS courses and provide one common interface and all related documentation.
 
 # Available instruments:
+```
 test_compilation
 
-test_integral
+test_integral 
 test_words_count
-
+```
 
 # Installation
 One script to install it all
