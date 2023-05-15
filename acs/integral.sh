@@ -16,38 +16,38 @@ CONFS[1]=$(mktemp /tmp/conf2.XXXXXX)
 CONFS[2]=$(mktemp /tmp/conf3.XXXXXX)
 export LC_NUMERIC="en_US.UTF-8"
 {
-    printf '%s\n' 'abs_err     = 0.0005'
-    printf '%s\n' 'rel_err     = 0.00000002'
-    printf '%s\n' 'x_start     = -50'
-    printf '%s\n' 'x_end       = 50'
-    printf '%s\n' 'y_start     = -50'
-    printf '%s\n' 'y_end       = 50'
-    printf '%s\n' 'init_steps_x  = 100'
-    printf '%s\n' 'init_steps_y  = 100'
-    printf '%s\n' 'max_iter    = 30'
-} >> "${CONFS[0]}"
+  printf '%s\n' 'abs_err     = 0.0005'
+  printf '%s\n' 'rel_err     = 0.00000002'
+  printf '%s\n' 'x_start     = -50'
+  printf '%s\n' 'x_end       = 50'
+  printf '%s\n' 'y_start     = -50'
+  printf '%s\n' 'y_end       = 50'
+  printf '%s\n' 'init_steps_x  = 100'
+  printf '%s\n' 'init_steps_y  = 100'
+  printf '%s\n' 'max_iter    = 30'
+} >>"${CONFS[0]}"
 {
-    printf '%s\n' 'abs_err     = 0.0005'
-    printf '%s\n' 'rel_err     = 0.00000002'
-    printf '%s\n' 'x_start     = -100'
-    printf '%s\n' 'x_end       = 100'
-    printf '%s\n' 'y_start     = -100'
-    printf '%s\n' 'y_end       = 100'
-    printf '%s\n' 'init_steps_x  = 100'
-    printf '%s\n' 'init_steps_y  = 100'
-    printf '%s\n' 'max_iter    = 30'
-} >> "${CONFS[1]}"
+  printf '%s\n' 'abs_err     = 0.0005'
+  printf '%s\n' 'rel_err     = 0.00000002'
+  printf '%s\n' 'x_start     = -100'
+  printf '%s\n' 'x_end       = 100'
+  printf '%s\n' 'y_start     = -100'
+  printf '%s\n' 'y_end       = 100'
+  printf '%s\n' 'init_steps_x  = 100'
+  printf '%s\n' 'init_steps_y  = 100'
+  printf '%s\n' 'max_iter    = 30'
+} >>"${CONFS[1]}"
 {
-    printf '%s\n' 'abs_err     = 0.000001'
-    printf '%s\n' 'rel_err     = 0.00002'
-    printf '%s\n' 'x_start     = -10'
-    printf '%s\n' 'x_end       = 10'
-    printf '%s\n' 'y_start     = -10'
-    printf '%s\n' 'y_end       = 10'
-    printf '%s\n' 'init_steps_x  = 100'
-    printf '%s\n' 'init_steps_y  = 100'
-    printf '%s\n' 'max_iter    = 30'
-} >> "${CONFS[2]}"
+  printf '%s\n' 'abs_err     = 0.000001'
+  printf '%s\n' 'rel_err     = 0.00002'
+  printf '%s\n' 'x_start     = -10'
+  printf '%s\n' 'x_end       = 10'
+  printf '%s\n' 'y_start     = -10'
+  printf '%s\n' 'y_end       = 10'
+  printf '%s\n' 'init_steps_x  = 100'
+  printf '%s\n' 'init_steps_y  = 100'
+  printf '%s\n' 'max_iter    = 30'
+} >>"${CONFS[2]}"
 
 # And program options
 POSITIONAL_ARGS=()
@@ -82,17 +82,17 @@ Details:
       ADDITIONAL=$2
       shift 2
     else
-	  echo "Option --additional requires a string argument." >&2
-	  exit 1
-	fi
+      echo "Option --additional requires a string argument." >&2
+      exit 1
+    fi
     ;;
   :)
     echo "Option -$OPTARG requires an numerical argument." >&2
     exit 1
     ;;
   *)
-	POSITIONAL_ARGS+=("$1") # save positional arg
-	shift 1
+    POSITIONAL_ARGS+=("$1") # save positional arg
+    shift 1
     ;;
   esac
 done
@@ -109,39 +109,38 @@ else
   exit 1
 fi
 
-
 # Declare correct answers for each function and epsilons for each function
-declare -a CORRECT_ANSWERS_FUNCTIONS 
+declare -a CORRECT_ANSWERS_FUNCTIONS
 CORRECT_ANSWERS_FUNCTIONS[0]=$(echo "4.545447652e6" | sed 's/e/*10^/g;s/ /*/' | bc)
 CORRECT_ANSWERS_FUNCTIONS[1]=$(echo "8.572082414e5" | sed 's/e/*10^/g;s/ /*/' | bc)
-CORRECT_ANSWERS_FUNCTIONS[2]=$(bc <<< -1.604646665)
+CORRECT_ANSWERS_FUNCTIONS[2]=$(bc <<<-1.604646665)
 EPSILONS=(20 20 0.0001)
 
 # Load the main function
 source run_prog_with_time_bound
 # For each function (without additional)
 for ((counter = 1; counter <= 3; counter++)); do
-	# return values will be stored in OUT_LINES array
-	OUT_LINES=()
-	command="$progname $counter ${CONFS[$((counter - 1))]} $ADDITIONAL"
+  # return values will be stored in OUT_LINES array
+  OUT_LINES=()
+  command="$progname $counter ${CONFS[$((counter - 1))]} $ADDITIONAL"
 
-	run_program_time_bound "$command" "$MAX_RUNTIME"
+  run_program_time_bound "$command" "$MAX_RUNTIME"
 
-    RESULT=$(printf "%.11f"'\n' ${OUT_LINES[0]} )
-    ABS_ERROR=${OUT_LINES[1]}
-    REL_ERROR=${OUT_LINES[2]}
-    TOTAL_TIME=${OUT_LINES[3]}
-	EXITCODE=${OUT_LINES[4]}
-  
-    difference=$(echo "scale=10; ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]} - $RESULT" | bc -l | tr -d '-')
-    if (( $(echo "$difference <= ${EPSILONS[$((counter - 1))]}" | bc -l) )); then
-      echo "The values for integral ${counter} are equal (within epsilon). 
+  RESULT=$(printf "%.11f"'\n' ${OUT_LINES[0]})
+  ABS_ERROR=${OUT_LINES[1]}
+  REL_ERROR=${OUT_LINES[2]}
+  TOTAL_TIME=${OUT_LINES[3]}
+  EXITCODE=${OUT_LINES[4]}
+
+  difference=$(echo "scale=10; ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]} - $RESULT" | bc -l | tr -d '-')
+  if (($(echo "$difference <= ${EPSILONS[$((counter - 1))]}" | bc -l))); then
+    echo "The values for integral ${counter} are equal (within epsilon). 
   Expected value: ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]};
   Received value: ${RESULT}."
-    else
-      echo "The values for integral ${counter} are NOT EQUAL (outside epsilon).
+  else
+    echo "The values for integral ${counter} are NOT EQUAL (outside epsilon).
   Expected value: ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]};
   Received value: ${RESULT}."
-    fi
-  
+  fi
+
 done
