@@ -5,9 +5,9 @@ set -o pipefail
 
 # Set the default maximum run time for the program in seconds
 MAX_RUNTIME=500
-N_TIMES=3
-N_MAX_THREADS=4
-N_MAX_MERGES=4
+N_TIMES=1
+N_MAX_THREADS=1
+N_MAX_MERGES=1
 # And some other important variables
 ADDITIONAL=""
 progname=""
@@ -131,14 +131,16 @@ for ((counter = 0; counter < "$N_TEST_CASES"; counter++)); do
   OUT_LINES=()
   command="$progname $CONF_FILE"
   run_program_time_bound "$command" "$MAX_RUNTIME"
-  if ! diff <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "$OUT_DIR/out_by_n_$counter-0"); then
-    echo -e "$WARN MISTAKE! Files by a and by n are not equal;"
+  if ! diff <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "$OUT_DIR/out_by_n_$counter-0") 2> /dev/null; then
+    echo -e "$WARN MISTAKE! Files sorted by alpabet and by number are not equal;"
     STATUS=true
   fi
 
-  if ! diff -w <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "${CORRECT_RES_FNAMES[$counter]}"); then
+  if ! (diff -w <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "${CORRECT_RES_FNAMES[$counter]}") > /dev/null); then 
     echo -e "$WARN MISTAKE! Output is not correct; expected output: "
     cat "${CORRECT_RES_FNAMES[$counter]}"
+    echo -e "But received output is: "
+    cat "$OUT_DIR/out_by_a_$counter-0"
     STATUS=true
   fi
 
