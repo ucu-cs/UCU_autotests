@@ -4,10 +4,10 @@ set -o errexit
 set -o pipefail
 
 # Set the default maximum run time for the program in seconds
-MAX_RUNTIME=500
-N_TIMES=1
-N_MAX_THREADS=1
-N_MAX_MERGES=1
+MAX_RUNTIME=40
+N_TIMES=3
+N_MAX_THREADS=4
+N_MAX_MERGES=4
 # And some other important variables
 ADDITIONAL=""
 progname=""
@@ -15,7 +15,8 @@ progname=""
 #ls $(dirname $indir_path)/words_count_results
 
 # https://stackoverflow.com/questions/18884992/how-do-i-assign-ls-to-an-array-in-linux-bash/18887210#18887210
-indir_path=$(dirname "$(readlink -f /usr/local/bin/test_words_count)")/words_count_testcases
+project_path=$(dirname "$(readlink -f /usr/local/bin/test_words_count)")
+indir_path=$project_path/words_count_testcases
 res_path=$(dirname "$(readlink -f /usr/local/bin/test_words_count)")/words_count_results
 
 shopt -s nullglob
@@ -27,12 +28,14 @@ N_TEST_CASES=${#indir_array[@]}
 # And program options
 POSITIONAL_ARGS=()
 STATUS=false
+VERBOSE=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
     echo "Usage: test_words_count [program name] [options]
 	-h	--help		Show help message.
+	-v  --verbose Show the output with additional information
 	-a	--additional	Some additional arguments to the exec file. String, in quotes.
 	-m	--max-runtime	Maximum runtime for one iteration, in [s]. Default - 20.
 	-n	--n-times	How many times to repeat the counting for each test file. Default - 3.
@@ -44,6 +47,10 @@ Details:
   \?)
     echo "Invalid option: -$OPTARG" >&2
     exit 1
+    ;;
+  -v | --verbose)
+    VERBOSE=true
+    shift 1
     ;;
   -m | --max_runtime)
     if [ "$2" -eq "$2" ] 2>/dev/null; then
@@ -113,30 +120,19 @@ for ((counter = 0; counter < "$N_TEST_CASES"; counter++)); do
   # Create configure files
   CONF_FILE=$(mktemp /tmp/conf.XXXXXX)
   {
-    printf '%s\n' "indir=	\"${indir_array[$counter]}\""
-    printf '%s\n' "out_by_a=	\"$OUT_DIR/out_by_a_$counter-0\""
-    printf '%s\n' "out_by_n=	\"$OUT_DIR/out_by_n_$counter-0\""
-    printf '%s\n' 'archives_extensions=	.zip'
-    printf '%s\n' 'indexing_extensions=	.txt'
-    printf '%s\n' 'max_file_size=		10000000'
-
-    printf '%s\n' 'indexing_threads=	1'
-    printf '%s\n' 'merging_threads=		1'
-    printf '%s\n' 'filenames_queue_size= 10000'
-    printf '%s\n' 'raw_files_queue_size= 1000'
-    printf '%s\n' 'dictionaries_queue_size= 1000'
+    m4 -DINPUT_DIR="${indir_array[$counter]}" -DOUT_A="$OUT_DIR/out_by_a_$counter-0" -DOUT_N="$OUT_DIR/out_by_n_$counter-0" ${indir_array[$counter]%?}.m4 $project_path/general_config.m4
   } >>"$CONF_FILE"
 
   # return values will be stored in OUT_LINES array
   OUT_LINES=()
   command="$progname $CONF_FILE"
   run_program_time_bound "$command" "$MAX_RUNTIME"
-  if ! diff <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "$OUT_DIR/out_by_n_$counter-0") 2> /dev/null; then
+  if ! diff <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "$OUT_DIR/out_by_n_$counter-0") 2>/dev/null; then
     echo -e "$WARN MISTAKE! Files sorted by alpabet and by number are not equal;"
     STATUS=true
   fi
 
-  if ! (diff -w <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "${CORRECT_RES_FNAMES[$counter]}") > /dev/null); then 
+  if ! (diff -w <(sort "$OUT_DIR/out_by_a_$counter-0") <(sort "${CORRECT_RES_FNAMES[$counter]}") >/dev/null); then
     echo -e "$WARN MISTAKE! Output is not correct; expected output: "
     cat "${CORRECT_RES_FNAMES[$counter]}"
     echo -e "But received output is: "
@@ -148,25 +144,16 @@ for ((counter = 0; counter < "$N_TEST_CASES"; counter++)); do
     echo -e "$PREFIX Test case: $counter, iteration: $n_time"
     for ((n_threads = 1; n_threads <= "$N_MAX_THREADS"; n_threads++)); do
       for ((n_merge = 1; n_merge <= "$N_MAX_MERGES"; n_merge++)); do
-        # echo "Test case: $counter, iteration: $n_time; thread $n_threads; merging threads: $n_merge."
+        if $VERBOSE; then
+          echo -e "$BLUE---> Test case: $counter, iteration: $n_time; thread $n_threads; merging threads: $n_merge.$NC"
+        fi
 
         # Create configure files
         l_name_a="$OUT_DIR/out_by_a_$counter-$n_time-$n_threads-$n_merge"
         l_name_n="$OUT_DIR/out_by_n_$counter-$n_time-$n_threads-$n_merge"
         CONF_FILE=$(mktemp /tmp/conf.XXXXXX)
         {
-          printf '%s\n' "indir=	\"${indir_array[$counter]}\""
-          printf '%s\n' "out_by_a=	\"$l_name_a\""
-          printf '%s\n' "out_by_n=	\"$l_name_n\""
-          printf '%s\n' 'archives_extensions=	.zip'
-          printf '%s\n' 'indexing_extensions=	.txt'
-          printf '%s\n' 'max_file_size=		10000000'
-
-          printf '%s\n' 'indexing_threads=	1'
-          printf '%s\n' 'merging_threads=		1'
-          printf '%s\n' 'filenames_queue_size= 10000'
-          printf '%s\n' 'raw_files_queue_size= 1000'
-          printf '%s\n' 'dictionaries_queue_size= 1000'
+          m4 -DINPUT_DIR="${indir_array[$counter]}" -DOUT_A="$l_name_a" -DOUT_N="$l_name_n" ${indir_array[$counter]%?}.m4 -DN_THREADS=$n_threads -DN_MTHREADS=$n_merge $project_path/general_config.m4
         } >>"$CONF_FILE"
 
         # return values will be stored in OUT_LINES array

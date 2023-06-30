@@ -5,6 +5,8 @@ set -o pipefail
 
 # Set the default maximum run time for the program in seconds
 MAX_RUNTIME=20
+N_TIMES=3
+N_MAX_THREADS=8
 # And some other important variables
 ADDITIONAL=""
 progname=""
@@ -14,6 +16,7 @@ declare -a CONFS
 CONFS[0]=$(mktemp /tmp/conf1.XXXXXX)
 CONFS[1]=$(mktemp /tmp/conf2.XXXXXX)
 CONFS[2]=$(mktemp /tmp/conf3.XXXXXX)
+# TODO preprocessor generating
 export LC_NUMERIC="en_US.UTF-8"
 {
   printf '%s\n' 'abs_err     = 0.0005'
@@ -60,8 +63,10 @@ while [[ $# -gt 0 ]]; do
 	-a	--additional	Some additional arguments to the exec file. String, in quotes.
 	-m	--max-runtime	Maximum runtime for one iteration, in [s]. Default - 20
 Details:
-	Example of additional arguments:
-	test_integral ./bin/integrate conf_file \"n_threads, n_points\""
+  Unfortunately, right now for the testing it is necessary to use so-called additional arguments.
+  For the Lab2 it is the number of threads, and for Lab3 it is the number of points.
+  Syntax of additional arguments:
+    test_integral ./bin/integrate -a \"n_threads, n_points\""
     exit 0
     ;;
   \?)
@@ -118,12 +123,21 @@ EPSILONS=(20 20 0.0001)
 
 # Load the main function
 source run_prog_with_time_bound
-# For each function (without additional)
+
+# And some general settings
+source $(dirname "$(readlink -f /usr/local/bin/test_compilation)")/general_settings.sh
+PREFIX="$MAGENTA==> [APPS testing integral] ${NC}"
+
+# For each function (without additional tasks)
 for ((counter = 1; counter <= 3; counter++)); do
+  echo -e "$PREFIX function $counter"
   # return values will be stored in OUT_LINES array
   OUT_LINES=()
-  command="$progname $counter ${CONFS[$((counter - 1))]} $ADDITIONAL"
+  for ((n_threads = 1; n_threads <= $N_MAX_THREADS; n_threads++)); do
+    echo 1
+  done
 
+  command="$progname $counter ${CONFS[$((counter - 1))]} $ADDITIONAL"
   run_program_time_bound "$command" "$MAX_RUNTIME"
 
   RESULT=$(printf "%.11f"'\n' ${OUT_LINES[0]})
@@ -134,13 +148,13 @@ for ((counter = 1; counter <= 3; counter++)); do
 
   difference=$(echo "scale=10; ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]} - $RESULT" | bc -l | tr -d '-')
   if (($(echo "$difference <= ${EPSILONS[$((counter - 1))]}" | bc -l))); then
-    echo "The values for integral ${counter} are equal (within epsilon). 
+    echo -e "${GREEN}-> The values for integral ${counter} are equal (within epsilon).
   Expected value: ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]};
-  Received value: ${RESULT}."
+  Received value: ${RESULT}. ${NC}"
   else
-    echo "The values for integral ${counter} are NOT EQUAL (outside epsilon).
+    echo -e "${RED}The values for integral ${counter} are NOT EQUAL (outside epsilon).
   Expected value: ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]};
-  Received value: ${RESULT}."
+  Received value: ${RESULT}.${NC}"
   fi
 
 done
