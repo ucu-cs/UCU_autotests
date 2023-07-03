@@ -9,3 +9,4 @@ merging_threads = N_MTHREADS # Number of threads for merging
 filenames_queue_size = SIZE_FILENAMES_QUEUE # Size of queue for filenames
 raw_files_queue_size = SIZE_FILES_QUEUE # Size of queue for raw files
 dictionaries_queue_size = SIZE_DICT_QUEUE # Size of queue for dictionaries
+ADDITIONAL_OPTIONS
