@@ -1,1 +1,11 @@
-define(`CORRECT_ANSWER', `4.545447652e6')dnl
+define(`CORRECT', -1.604646665)dnl
+define(`EPSILON', 0.1)
+define(`ABS_ERR', 0.000001)dnl
+define(`REL_ERR', 0.00002)dnl
+define(`X_START', -10)dnl
+define(`X_END', 10)dnl
+define(`Y_START', -10)dnl
+define(`Y_END', 10)dnl
+define(`INIT_STEP_X', 100)dnl
+define(`INIT_STEP_Y', 100)dnl
+define(`MAX_ITER', 30)dnl

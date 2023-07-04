@@ -3,53 +3,41 @@
 set -o errexit
 set -o pipefail
 
+# And some general settings
+source $(dirname "$(readlink -f /usr/local/bin/test_compilation)")/general_settings.sh
+PREFIX="$MAGENTA==> [APPS testing integral] ${NC}"
+
 # Set the default maximum run time for the program in seconds
 MAX_RUNTIME=20
 N_TIMES=3
 N_MAX_THREADS=8
+LAB_NUMBER=$2
+if [ ! -n "$LAB_NUMBER" ]; then
+  echo -e "${ERROR}The lab number is not specified. Run test_integral -h for more details."
+  exit
+fi
+
 # And some other important variables
 ADDITIONAL=""
 progname=""
+
+project_path=$(dirname "$(readlink -f /usr/local/bin/test_integral)")
 
 # Create configure files
 declare -a CONFS
 CONFS[0]=$(mktemp /tmp/conf1.XXXXXX)
 CONFS[1]=$(mktemp /tmp/conf2.XXXXXX)
 CONFS[2]=$(mktemp /tmp/conf3.XXXXXX)
-# TODO preprocessor generating
+
 export LC_NUMERIC="en_US.UTF-8"
 {
-  printf '%s\n' 'abs_err     = 0.0005'
-  printf '%s\n' 'rel_err     = 0.00000002'
-  printf '%s\n' 'x_start     = -50'
-  printf '%s\n' 'x_end       = 50'
-  printf '%s\n' 'y_start     = -50'
-  printf '%s\n' 'y_end       = 50'
-  printf '%s\n' 'init_steps_x  = 100'
-  printf '%s\n' 'init_steps_y  = 100'
-  printf '%s\n' 'max_iter    = 30'
+  m4 $project_path/func_1.m4 $project_path/general_config.m4
 } >>"${CONFS[0]}"
 {
-  printf '%s\n' 'abs_err     = 0.0005'
-  printf '%s\n' 'rel_err     = 0.00000002'
-  printf '%s\n' 'x_start     = -100'
-  printf '%s\n' 'x_end       = 100'
-  printf '%s\n' 'y_start     = -100'
-  printf '%s\n' 'y_end       = 100'
-  printf '%s\n' 'init_steps_x  = 100'
-  printf '%s\n' 'init_steps_y  = 100'
-  printf '%s\n' 'max_iter    = 30'
+  m4 $project_path/func_2.m4 $project_path/general_config.m4
 } >>"${CONFS[1]}"
 {
-  printf '%s\n' 'abs_err     = 0.000001'
-  printf '%s\n' 'rel_err     = 0.00002'
-  printf '%s\n' 'x_start     = -10'
-  printf '%s\n' 'x_end       = 10'
-  printf '%s\n' 'y_start     = -10'
-  printf '%s\n' 'y_end       = 10'
-  printf '%s\n' 'init_steps_x  = 100'
-  printf '%s\n' 'init_steps_y  = 100'
-  printf '%s\n' 'max_iter    = 30'
+  m4 $project_path/func_3.m4 $project_path/general_config.m4
 } >>"${CONFS[2]}"
 
 # And program options
@@ -58,15 +46,17 @@ POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
-    echo "Usage: test_integral [program name] [options]
+    echo "Usage: test_integral [program name] [lab number] [options]
 	-h	--help		Show help message.
 	-a	--additional	Some additional arguments to the exec file. String, in quotes.
 	-m	--max-runtime	Maximum runtime for one iteration, in [s]. Default - 20
 Details:
-  Unfortunately, right now for the testing it is necessary to use so-called additional arguments.
-  For the Lab2 it is the number of threads, and for Lab3 it is the number of points.
-  Syntax of additional arguments:
-    test_integral ./bin/integrate -a \"n_threads, n_points\""
+  [lab number] is a number of the Integral lab, from 1 to 4."
+
+#  Unfortunately, right now for the testing it is necessary to use so-called additional arguments.
+#  For the Lab2 it is the number of threads, and for Lab3 it is the number of points.
+#  Syntax of additional arguments:
+#    test_integral ./bin/integrate -a \"n_threads, n_points\""
     exit 0
     ;;
   \?)
@@ -114,47 +104,27 @@ else
   exit 1
 fi
 
-# Declare correct answers for each function and epsilons for each function
-declare -a CORRECT_ANSWERS_FUNCTIONS
-CORRECT_ANSWERS_FUNCTIONS[0]=$(echo "4.545447652e6" | sed 's/e/*10^/g;s/ /*/' | bc)
-CORRECT_ANSWERS_FUNCTIONS[1]=$(echo "8.572082414e5" | sed 's/e/*10^/g;s/ /*/' | bc)
-CORRECT_ANSWERS_FUNCTIONS[2]=$(bc <<<-1.604646665)
-EPSILONS=(20 20 0.0001)
-
 # Load the main function
 source run_prog_with_time_bound
-
-# And some general settings
-source $(dirname "$(readlink -f /usr/local/bin/test_compilation)")/general_settings.sh
-PREFIX="$MAGENTA==> [APPS testing integral] ${NC}"
 
 # For each function (without additional tasks)
 for ((counter = 1; counter <= 3; counter++)); do
   echo -e "$PREFIX function $counter"
   # return values will be stored in OUT_LINES array
-  OUT_LINES=()
   for ((n_threads = 1; n_threads <= $N_MAX_THREADS; n_threads++)); do
-    echo 1
+    OUT_LINES=()
+
+    command="$progname $counter ${CONFS[$((counter - 1))]} $ADDITIONAL"
+    run_program_time_bound "$command" "$MAX_RUNTIME"
+
+    RESULT=$(printf "%.11f"'\n' ${OUT_LINES[0]})
+    ABS_ERROR=${OUT_LINES[1]}
+    REL_ERROR=${OUT_LINES[2]}
+    TOTAL_TIME=${OUT_LINES[3]}
+    EXITCODE=${OUT_LINES[4]}
+
+    echo -e "${BLUE}---> Testing the integral computation, $n_threads threads.${NC}"
+    m4 $project_path/func_$counter.m4 $project_path/compare.sh | bash -c "$(cat)" -- $RESULT
   done
-
-  command="$progname $counter ${CONFS[$((counter - 1))]} $ADDITIONAL"
-  run_program_time_bound "$command" "$MAX_RUNTIME"
-
-  RESULT=$(printf "%.11f"'\n' ${OUT_LINES[0]})
-  ABS_ERROR=${OUT_LINES[1]}
-  REL_ERROR=${OUT_LINES[2]}
-  TOTAL_TIME=${OUT_LINES[3]}
-  EXITCODE=${OUT_LINES[4]}
-
-  difference=$(echo "scale=10; ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]} - $RESULT" | bc -l | tr -d '-')
-  if (($(echo "$difference <= ${EPSILONS[$((counter - 1))]}" | bc -l))); then
-    echo -e "${GREEN}-> The values for integral ${counter} are equal (within epsilon).
-  Expected value: ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]};
-  Received value: ${RESULT}. ${NC}"
-  else
-    echo -e "${RED}The values for integral ${counter} are NOT EQUAL (outside epsilon).
-  Expected value: ${CORRECT_ANSWERS_FUNCTIONS[$((counter - 1))]};
-  Received value: ${RESULT}.${NC}"
-  fi
 
 done
