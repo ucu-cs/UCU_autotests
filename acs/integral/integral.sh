@@ -10,13 +10,8 @@ PREFIX="$MAGENTA==> [APPS testing integral] ${NC}"
 # Set the default maximum run time for the program in seconds
 MAX_RUNTIME=20
 N_TIMES=3
-N_MAX_THREADS=8
-LAB_NUMBER=$2
-if [ ! -n "$LAB_NUMBER" ]; then
-  echo -e "${ERROR}The lab number is not specified. Run test_integral -h for more details."
-  exit
-fi
-
+N_MAX_THREADS=$(grep -c ^processor /proc/cpuinfo)
+echo -e "${CYAN}The number of cores is $N_MAX_THREADS${NC}"
 # And some other important variables
 ADDITIONAL=""
 progname=""
@@ -48,15 +43,15 @@ while [[ $# -gt 0 ]]; do
   -h | --help)
     echo "Usage: test_integral [program name] [lab number] [options]
 	-h	--help		Show help message.
-	-a	--additional	Some additional arguments to the exec file. String, in quotes.
 	-m	--max-runtime	Maximum runtime for one iteration, in [s]. Default - 20
 Details:
   [lab number] is a number of the Integral lab, from 1 to 4."
 
-#  Unfortunately, right now for the testing it is necessary to use so-called additional arguments.
-#  For the Lab2 it is the number of threads, and for Lab3 it is the number of points.
-#  Syntax of additional arguments:
-#    test_integral ./bin/integrate -a \"n_threads, n_points\""
+    #	-a	--additional	Some additional arguments to the exec file. String, in quotes.
+    #  Unfortunately, right now for the testing it is necessary to use so-called additional arguments.
+    #  For the Lab2 it is the number of threads, and for Lab3 it is the number of points.
+    #  Syntax of additional arguments:
+    #    test_integral ./bin/integrate -a \"n_threads, n_points\""
     exit 0
     ;;
   \?)
@@ -72,15 +67,15 @@ Details:
       exit 1
     fi
     ;;
-  -a | --additional)
-    if [ ! -z "$2" ] 2>/dev/null; then
-      ADDITIONAL=$2
-      shift 2
-    else
-      echo "Option --additional requires a string argument." >&2
-      exit 1
-    fi
-    ;;
+    #  -a | --additional)
+    #    if [ ! -z "$2" ] 2>/dev/null; then
+    #      ADDITIONAL=$2
+    #      shift 2
+    #    else
+    #      echo "Option --additional requires a string argument." >&2
+    #      exit 1
+    #    fi
+    #    ;;
   :)
     echo "Option -$OPTARG requires an numerical argument." >&2
     exit 1
@@ -94,13 +89,27 @@ done
 
 set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
 
+LAB_NUMBER=$2
+# Check  bounds for positional for positional argument - the number of the lab
+if [ -z "$LAB_NUMBER" ]; then
+  echo -e "${ERROR}The lab number is not specified. Run test_integral -h for more details."
+  exit
+fi
+if [ "$LAB_NUMBER" -gt "4" ] || [ "$LAB_NUMBER" -le "0" ]; then
+  echo -e "${ERROR}The lab number should be from 1 to 4."
+  exit
+fi
+if [ "$LAB_NUMBER" -eq "1" ]; then
+  N_MAX_THREADS=1
+fi
+
 # Check if the program name is set
 if [ -e "$1" ]; then
   echo "$1 exists. Continuing:"
   progname=$1
   shift
 else
-  echo "ERROR: program $1 does not exist or not found."
+  echo "${ERROR}Program $1 does not exist or not found."
   exit 1
 fi
 
@@ -113,11 +122,19 @@ for ((counter = 1; counter <= 3; counter++)); do
   # return values will be stored in OUT_LINES array
   for ((n_threads = 1; n_threads <= $N_MAX_THREADS; n_threads++)); do
     OUT_LINES=()
+    if [ "$LAB_NUMBER" -ge "2" ]; then
+      ADDITIONAL="$n_threads"
+    fi
+    if [ "$LAB_NUMBER" -ge "3" ]; then
+      ADDITIONAL+=" 1000"
+    fi
 
     command="$progname $counter ${CONFS[$((counter - 1))]} $ADDITIONAL"
     run_program_time_bound "$command" "$MAX_RUNTIME"
 
     RESULT=$(printf "%.11f"'\n' ${OUT_LINES[0]})
+
+    # For improvements
     ABS_ERROR=${OUT_LINES[1]}
     REL_ERROR=${OUT_LINES[2]}
     TOTAL_TIME=${OUT_LINES[3]}
@@ -125,6 +142,6 @@ for ((counter = 1; counter <= 3; counter++)); do
 
     echo -e "${BLUE}---> Testing the integral computation, $n_threads threads.${NC}"
     m4 $project_path/func_$counter.m4 $project_path/compare.sh | bash -c "$(cat)" -- $RESULT
-  done
 
+  done
 done

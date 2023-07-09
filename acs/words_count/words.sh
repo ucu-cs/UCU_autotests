@@ -33,15 +33,14 @@ VERBOSE=false
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
-    echo "Usage: test_words_count [program name] [options]
+    echo "Usage: test_words_count [program name] [lab_number] [options]
 	-h	--help		Show help message.
 	-v  --verbose Show the output with additional information
-	-a	--additional	Some additional arguments to the exec file. String, in quotes.
 	-m	--max-runtime	Maximum runtime for one iteration, in [s]. Default - 20.
 	-n	--n-times	How many times to repeat the counting for each test file. Default - 3.
 Details:
-	Example of additional arguments:
-	test_integral ./bin/integrate conf_file \"n_threads, n_points\""
+  [lab number] is a number of the Integral lab, from 1 to 4."
+    #	-a	--additional	Some additional arguments to the exec file. String, in quotes.
     exit 0
     ;;
   \?)
@@ -70,15 +69,15 @@ Details:
       exit 1
     fi
     ;;
-  -a | --additional)
-    if [ ! -z "$2" ] 2>/dev/null; then
-      ADDITIONAL=$2
-      shift 2
-    else
-      echo "Option --additional requires a string argument." >&2
-      exit 1
-    fi
-    ;;
+    #  -a | --additional)
+    #    if [ ! -z "$2" ] 2>/dev/null; then
+    #      ADDITIONAL=$2
+    #      shift 2
+    #    else
+    #      echo "Option --additional requires a string argument." >&2
+    #      exit 1
+    #    fi
+    #    ;;
   :)
     echo "Option -$OPTARG requires an numerical argument." >&2
     exit 1
@@ -91,6 +90,21 @@ Details:
 done
 
 set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+LAB_NUMBER=$2
+# Check  bounds for positional for positional argument - the number of the lab
+if [ -z "$LAB_NUMBER" ]; then
+  echo -e "${ERROR}The lab number is not specified. Run test_words_count -h for more details."
+  exit
+fi
+if [ "$LAB_NUMBER" -gt "4" ] || [ "$LAB_NUMBER" -le "0" ]; then
+  echo -e "${ERROR}The lab number should be from 1 to 4."
+  exit
+fi
+if [ "$LAB_NUMBER" -eq "1" ]; then
+  N_MAX_THREADS=1
+  N_MAX_MERGES=1
+fi
 
 # Check if the program name is set
 if [ -e "$1" ]; then
