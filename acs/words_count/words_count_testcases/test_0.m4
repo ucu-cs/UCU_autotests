@@ -6,4 +6,3 @@ define(`N_MTHREADS', `1')dnl
 define(`SIZE_FILENAMES_QUEUE', `10000')dnl
 define(`SIZE_FILES_QUEUE', `1000')dnl
 define(`SIZE_DICT_QUEUE', `1000')dnl
-define(`ADDITIONAL_OPTIONS', `')dnl

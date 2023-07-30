@@ -134,7 +134,7 @@ for ((counter = 0; counter < "$N_TEST_CASES"; counter++)); do
   # Create configure files
   CONF_FILE=$(mktemp /tmp/conf.XXXXXX)
   {
-    m4 -DINPUT_DIR="${indir_array[$counter]}" -DOUT_A="$OUT_DIR/out_by_a_$counter-0" -DOUT_N="$OUT_DIR/out_by_n_$counter-0" ${indir_array[$counter]%?}.m4 $project_path/general_config.m4
+    m4 -DINPUT_DIR="${indir_array[$counter]}" -DOUT_A="$OUT_DIR/out_by_a_$counter-0" -DOUT_N="$OUT_DIR/out_by_n_$counter-0" -DADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS" ${indir_array[$counter]%?}.m4 $project_path/general_config.m4
   } >>"$CONF_FILE"
 
   # return values will be stored in OUT_LINES array
@@ -167,7 +167,7 @@ for ((counter = 0; counter < "$N_TEST_CASES"; counter++)); do
         l_name_n="$OUT_DIR/out_by_n_$counter-$n_time-$n_threads-$n_merge"
         CONF_FILE=$(mktemp /tmp/conf.XXXXXX)
         {
-          m4 -DINPUT_DIR="${indir_array[$counter]}" -DOUT_A="$l_name_a" -DOUT_N="$l_name_n" ${indir_array[$counter]%?}.m4 -DN_THREADS=$n_threads -DN_MTHREADS=$n_merge $project_path/general_config.m4
+          m4 -DINPUT_DIR="${indir_array[$counter]}" -DOUT_A="$l_name_a" -DOUT_N="$l_name_n" ${indir_array[$counter]%?}.m4 -DADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS" -DN_THREADS=$n_threads -DN_MTHREADS=$n_merge $project_path/general_config.m4
         } >>"$CONF_FILE"
 
         # return values will be stored in OUT_LINES array
