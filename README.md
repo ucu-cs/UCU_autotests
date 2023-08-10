@@ -1,8 +1,8 @@
 # UCU_autotests
-The project that should collect all tests for UCU robotics lab's subjects and provide one common interface, and all related documentation in one place.
+The project should collect all tests for UCU robotics lab's subjects and provide one common interface and all related documentation in one place.
 
 # Available scripts:
-For every script --help option is available with the complete description, possible options and usage explanation.
+For every script --a help option is available with the complete description, possible options and usage explanation.
 
 ```
 test_compilation
@@ -31,8 +31,8 @@ cd UCU_autotests                                                    #
 After the setup, `test_compilation`, `test_words_count` and `test_integral` can be used from any folder.
 
 So when a new student's lab is received, what should be done:
-- check the `CMakeLists.txt`. Right now `test_compilation` works only if the `CMakeLists.txt` is consistent with the [template](https://github.com/ucu-cs/template_cpp) one.
-- run the `test_compilation` in a main lab's folder. It will create multiple executables in `./bin` folder. In case of warnings, consider relaunching the script with `-w` option (see `test_compilation --help` for more details).
+- check the `CMakeLists.txt`. Currently, `test_compilation` works if only the `CMakeLists.txt` is consistent with the [template](https://github.com/ucu-cs/template_cpp).
+- run the `test_compilation` in the main lab's folder. It will create multiple executables in the `./bin` folder. In case of warnings, consider relaunching the script with the `-w` option (see `test_compilation --help` for more details).
 - read the output carefully - if there is PVS output, it will be in those logs.
 - run the student's program with `./bin/run_with...` executable files, to check it with sanitizers.
 - after that, if the lab is **words count** or **integral** - test it with correspondent `test_words_count` or `test_integral` (again, see `--help` for more details)
@@ -40,7 +40,7 @@ So when a new student's lab is received, what should be done:
 - then analyze the code and give the feedback
 
 **optional**
-- To check with profiler: test the program with perf - `perf record --call-graph dwarf ./bin/release [options/config]`. Then the `hotspot` program can be used to visualize perf results: `hotspot perf.data`
+- To check with the profiler: test the program with perf - `perf record --call-graph dwarf ./bin/release [options/config]`. Then the `hotspot` program can visualize perf results: `hotspot perf.data`
 
 ## ACS words count default test cases description
 
@@ -64,7 +64,7 @@ So when a new student's lab is received, what should be done:
 │           └── to_ignore.html
 ```
 
-- words_count_testcases/test_1 contains 1 word. A little bit better test case to test if the program can work with subdirectories and doesn't count the same file more than once.
+- words_count_testcases/test_1 contains one word - is a better test case to test if the program can work with subdirectories and doesn't count the same file more than once.
 
 ### Test 70
 - structure:
@@ -94,15 +94,15 @@ archive
 │       └── 9.txt
 ```
 
-- words_count_testcases/test_70 contains in total 70 words. Multiple directories, multiple files. 
+- words_count_testcases/test_70 contains in total 70 words: multiple directories, multiple files. 
 
 ### How to add more test cases?
 - create a folder `words_count_testcases/test_[something]`, with only one file `archive.zip`.
-- create a file `words_count_results/test_[something]`, with the correctly counted words, see existing files. 
+- create a file, `words_count_results/test_[something]`, with the correctly counted words; see existing files. 
 - create a template for a configuration files, `words_count_testcases/test_[something].m4`, see existing examples.
 
 # IMPORTANT
-**ALL Additional parameters, needed for your lab, should be specified as environmental variable `ADDITIONAL_OPTIONS`**
+**ALL Additional parameters needed for your lab should be specified as environmental variable `ADDITIONAL_OPTIONS`**
 For example:
 for a proper work, the additional parameters `max_live_tokens` and `max_queue_size` should be set.
 **Before** launching the `test_words_count`, set a variable, for example:
