@@ -1,7 +1,9 @@
 # UCU_autotests
-The project that should unify all tests in UCU PoCO, ACS, OS courses and provide one common interface and all related documentation.
+The project that should collect all tests for UCU robotics lab's subjects and provide one common interface, and all related documentation in one place.
 
-# Available instruments:
+# Available scripts:
+For every script --help option is available with the complete description, possible options and usage explanation.
+
 ```
 test_compilation
 
@@ -10,14 +12,38 @@ test_words_count
 ```
 
 # Installation
-One script to install it all
+"One script to install it all"
 ```
 ./setup.sh
 ```
-It requires password, because it uses `sudo` program to create symlinks to `/usr/local/bin` folder.
+It creates symlinks to `/home/$USER/.local/bin` folder, such that all instruments are available from any folder in the system.
 
 # Description 
+
+## Usage
+### Step-by-step guide
+```{bash}
+git clone git@github.com:Myralllka/UCU_autotests.git ~/Downloads    # clone the repo to any suitable location
+cd UCU_autotests                                                    # 
+./system_check.sh                                                   # check if all necessary programs are installed on your local machine
+./setup.sh                                                          # install all programs (make symlinks so they are executable from anywhere)
+```
+After the setup, `test_compilation`, `test_words_count` and `test_integral` can be used from any folder.
+
+So when a new student's lab is received, what should be done:
+- check the `CMakeLists.txt`. Right now `test_compilation` works only if the `CMakeLists.txt` is consistent with the [template](https://github.com/ucu-cs/template_cpp) one.
+- run the `test_compilation` in a main lab's folder. It will create multiple executables in `./bin` folder. In case of warnings, consider relaunching the script with `-w` option (see `test_compilation --help` for more details).
+- read the output carefully - if there is PVS output, it will be in those logs.
+- run the student's program with `./bin/run_with...` executable files, to check it with sanitizers.
+- after that, if the lab is **words count** or **integral** - test it with correspondent `test_words_count` or `test_integral` (again, see `--help` for more details)
+- test the program with valgrind: `valgrind --tool=helgrind ./bin/releases [options/config]` and `valgrind --tool=memcheck --leak-check=full ./bin/release [options/config]`
+- then analyze the code and give the feedback
+
+**optional**
+- To check with profiler: test the program with perf - `perf record --call-graph dwarf ./bin/release [options/config]`. Then the `hotspot` program can be used to visualize perf results: `hotspot perf.data`
+
 ## ACS words count default test cases description
+
 ### Test 0
 - structure: 
 ```bash

@@ -7,15 +7,15 @@
 # yet :TODO
 
 echo "Password needed to create correct symlinks and make it possible to run test scripts from any directory"
-sudo ln -sf $PWD/general/run_prog_with_time_bound.sh /usr/local/bin/run_prog_with_time_bound
-sudo chmod +x /usr/local/bin/run_prog_with_time_bound
+sudo ln -sf $PWD/general/run_prog_with_time_bound.sh /home/$USER/.local/bin/run_prog_with_time_bound
+sudo chmod +x /home/$USER/.local/bin/run_prog_with_time_bound
 
-sudo ln -sf $PWD/general/compile.sh /usr/local/bin/test_compilation
-sudo chmod +x /usr/local/bin/test_compilation
-sudo ln -sf $PWD/acs/integral/integral.sh /usr/local/bin/test_integral
-sudo chmod +x /usr/local/bin/test_integral
-sudo ln -sf $PWD/acs/words_count/words.sh /usr/local/bin/test_words_count
-sudo chmod +x /usr/local/bin/test_words_count
+sudo ln -sf $PWD/general/compile.sh /home/$USER/.local/bin/test_compilation
+sudo chmod +x /home/$USER/.local/bin/test_compilation
+sudo ln -sf $PWD/acs/integral/integral.sh /home/$USER/.local/bin/test_integral
+sudo chmod +x /home/$USER/.local/bin/test_integral
+sudo ln -sf $PWD/acs/words_count/words.sh /home/$USER/.local/bin/test_words_count
+sudo chmod +x /home/$USER/.local/bin/test_words_count
 
 echo "Now do \"source ~/.bashrc\" or \"source ~/.zshrc\" and use 'test_integral' from any location"
 
