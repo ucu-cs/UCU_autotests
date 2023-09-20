@@ -27,6 +27,7 @@
 #include <iostream>
 #include <string>
 #include <exception>
+#include <limits>
 
 #include "mystring.hpp"
 
