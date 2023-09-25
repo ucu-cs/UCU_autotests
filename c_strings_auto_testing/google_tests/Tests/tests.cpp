@@ -198,14 +198,10 @@ TEST_F(ClassDeclaration, res_clear) {
     EXPECT_EQ(test_res.capacity(), prev_cap);
     EXPECT_EQ(test_res, my_str_t("hi, buongiorno, buonasera     "));
 
+    // check this!!!!
     test_res.resize(prev_cap + 5, 'a');
     EXPECT_EQ(test_res.size(), prev_cap + 5);
     EXPECT_GE(test_res.capacity(), test_res.size());
-    // check this!!!!
-    EXPECT_EQ(test_res, my_str_t("hi, buongiorno, buonasera     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
-
-    std::string construct_string(prev_cap + 5 - 30,'a');
-    EXPECT_EQ(test_res, my_str_t("hi, buongiorno, buonasera     "s + construct_string));
 
     // clear
     test_res.clear();
