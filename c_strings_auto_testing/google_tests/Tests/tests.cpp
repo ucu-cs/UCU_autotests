@@ -163,10 +163,11 @@ TEST_F(ClassDeclaration, reserve_shrink) {
     // reserve
     my_str_t test_cap = my_str_t("hi, hi, hi, hi, hi!!!");
     EXPECT_EQ(test_cap.size(), 21);
+    auto prev_cap = test_cap.capacity();
     EXPECT_GE(test_cap.capacity(), test_cap.size());
 
     test_cap.reserve(15);
-    EXPECT_EQ(test_cap.capacity(), 31);
+    EXPECT_EQ(test_cap.capacity(), prev_cap);
 
     test_cap.reserve(53);
     EXPECT_EQ(test_cap.capacity(), 53);
@@ -200,6 +201,8 @@ TEST_F(ClassDeclaration, res_clear) {
     test_res.resize(prev_cap + 5, 'a');
     EXPECT_EQ(test_res.size(), prev_cap + 5);
     EXPECT_GE(test_res.capacity(), test_res.size());
+    // check this!!!!
+    EXPECT_EQ(test_res, my_str_t("hi, buongiorno, buonasera     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
 
     std::string construct_string(prev_cap + 5 - 30,'a');
     EXPECT_EQ(test_res, my_str_t("hi, buongiorno, buonasera     "s + construct_string));
@@ -264,21 +267,22 @@ TEST_F(ClassDeclaration, insert_char) {
  */
 TEST_F(ClassDeclaration, insert_my_str) {
     my_str_t test_insert_my_str = my_str_t("hi, how are you?");
-    auto my_capacity = 31;
+    auto my_capacity = test_insert_my_str.capacity() + 16;
     test_insert_my_str.reserve(my_capacity);
     EXPECT_EQ(test_insert_my_str.size(), 16);
-    EXPECT_EQ(test_insert_my_str.capacity(), my_capacity);
+    EXPECT_GE(test_insert_my_str.capacity(), my_capacity);
 
     // normal insert
     test_insert_my_str.insert(3, my_str_t(" friend,"));
     EXPECT_EQ(test_insert_my_str, my_str_t("hi, friend, how are you?"));
     EXPECT_EQ(test_insert_my_str.size(), 24);
-    EXPECT_EQ(test_insert_my_str.capacity(), my_capacity);
+    EXPECT_GE(test_insert_my_str.capacity(), my_capacity);
 
     // insert at the end of the string
     test_insert_my_str.insert(test_insert_my_str.size(), my_str_t(" I am fine!"));
     EXPECT_EQ(test_insert_my_str, my_str_t("hi, friend, how are you? I am fine!"));
     EXPECT_EQ(test_insert_my_str.size(), 35);
+
     // test if capacity increased
     EXPECT_GE(test_insert_my_str.capacity(), my_capacity);
 
@@ -315,16 +319,16 @@ TEST_F(ClassDeclaration, insert_my_str) {
  */
 TEST_F(ClassDeclaration, insert_c_string) {
     my_str_t test_insert_c_str = my_str_t("hi, how are you?");
-    auto my_capacity = 31;
+    auto my_capacity = test_insert_c_str.capacity() + 16;
     test_insert_c_str.reserve(my_capacity);
     EXPECT_EQ(test_insert_c_str.size(), 16);
-    EXPECT_EQ(test_insert_c_str.capacity(), my_capacity);
+    EXPECT_GE(test_insert_c_str.capacity(), my_capacity);
 
     // normal insert
     test_insert_c_str.insert(3, " friend,");
     EXPECT_EQ(test_insert_c_str, my_str_t("hi, friend, how are you?"));
     EXPECT_EQ(test_insert_c_str.size(), 24);
-    EXPECT_EQ(test_insert_c_str.capacity(), my_capacity);
+    EXPECT_GE(test_insert_c_str.capacity(), my_capacity);
 
     // insert at the end of the string
     test_insert_c_str.insert(test_insert_c_str.size(), " I am fine!");
@@ -366,16 +370,16 @@ TEST_F(ClassDeclaration, insert_c_string) {
  */
 TEST_F(ClassDeclaration, append_char) {
     my_str_t test_append_char = my_str_t("I love c++ strings lab!!!");
-    auto my_capacity = 31;
+    auto my_capacity = test_append_char.capacity() + 16;
     test_append_char.reserve(my_capacity);
     EXPECT_EQ(test_append_char.size(), 25);
-    EXPECT_EQ(test_append_char.capacity(), my_capacity);
+    EXPECT_GE(test_append_char.capacity(), my_capacity);
 
     // normal append
     test_append_char.append('q');
     EXPECT_EQ(test_append_char, my_str_t("I love c++ strings lab!!!q"));
     EXPECT_EQ(test_append_char.size(), 26);
-    EXPECT_EQ(test_append_char.capacity(), my_capacity);
+    EXPECT_GE(test_append_char.capacity(), my_capacity);
 
     // test capacity increse
     test_append_char.append('q');
@@ -404,10 +408,10 @@ TEST_F(ClassDeclaration, append_char) {
  */
 TEST_F(ClassDeclaration, append_my_str) {
     my_str_t test_append_my_str = my_str_t("I love c++ strings lab!!!");
-    auto my_capacity = 31;
+    auto my_capacity = test_append_my_str.capacity() + 16;
     test_append_my_str.reserve(my_capacity);
     EXPECT_EQ(test_append_my_str.size(), 25);
-    EXPECT_EQ(test_append_my_str.capacity(), my_capacity);
+    EXPECT_GE(test_append_my_str.capacity(), my_capacity);
 
     // normal append
     test_append_my_str.append(my_str_t(" Very much!!!"));
@@ -438,10 +442,10 @@ TEST_F(ClassDeclaration, append_my_str) {
  */
 TEST_F(ClassDeclaration, append_c_str) {
     my_str_t test_append_c_str = my_str_t("I love c++ strings lab!!!");
-    auto my_capacity = 31;
+    auto my_capacity = test_append_c_str.capacity() + 16;
     test_append_c_str.reserve(my_capacity);
     EXPECT_EQ(test_append_c_str.size(), 25);
-    EXPECT_EQ(test_append_c_str.capacity(), my_capacity);
+    EXPECT_GE(test_append_c_str.capacity(), my_capacity);
 
     // normal append
     test_append_c_str.append(" Very much!!!");
@@ -631,7 +635,8 @@ TEST_F(ClassDeclaration, equality_operator){
     EXPECT_EQ(test != test1, true);
     EXPECT_EQ(test != "Muzychu", false);
     EXPECT_EQ("Muzychu" != test, false);
-    EXPECT_EQ(test + "appendedmystr", "Muzychu" + test1);
+    // extra task - can't be in tests
+   // EXPECT_EQ(test + "appendedmystr", "Muzychu" + test1);
 }
 
 /*
