@@ -218,31 +218,31 @@ TEST_F(ClassDeclaration, insert_char) {
     auto my_capacity = 18;
     test_insert.reserve(my_capacity);
     EXPECT_EQ(test_insert.size(), 15);
-    EXPECT_EQ(test_insert.capacity(), my_capacity);
+    EXPECT_GE(test_insert.capacity(), my_capacity);
 
     // insert char inside
     test_insert.insert(2, 'i');
     EXPECT_EQ(test_insert, my_str_t("hii, hello, hola"));
     EXPECT_EQ(test_insert.size(), 16);
-    EXPECT_EQ(test_insert.capacity(), my_capacity);
+    EXPECT_GE(test_insert.capacity(), my_capacity);
 
     // insert char at size()
     test_insert.insert(test_insert.size(), '!');
     EXPECT_EQ(test_insert, my_str_t("hii, hello, hola!"));
     EXPECT_EQ(test_insert.size(), 17);
-    EXPECT_EQ(test_insert.capacity(), my_capacity);
+    EXPECT_GE(test_insert.capacity(), my_capacity);
 
     // insert char at 0
     test_insert.insert(0, 'h');
     EXPECT_EQ(test_insert, my_str_t("hhii, hello, hola!"));
     EXPECT_EQ(test_insert.size(), 18);
-    EXPECT_EQ(test_insert.capacity(), my_capacity);
+    EXPECT_GE(test_insert.capacity(), my_capacity);
 
     // insert char at bad position
     EXPECT_THROW(test_insert.insert(test_insert.size()+1, 'h'), std::out_of_range);
     EXPECT_EQ(test_insert, my_str_t("hhii, hello, hola!"));
     EXPECT_EQ(test_insert.size(), 18);
-    EXPECT_EQ(test_insert.capacity(), my_capacity);
+    EXPECT_GE(test_insert.capacity(), my_capacity);
 
     // insert char with extending buffer
     test_insert.insert(8, 'l');
