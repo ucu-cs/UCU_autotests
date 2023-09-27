@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 # CHANGE YOUR PROJECT NAME
 set(PROJECT_NAME c_string_tests)
+set(CMAKE_CXX_STANDARD 20)
+
 project(${PROJECT_NAME} C CXX)
 
 set(LIBN my_c_string)
