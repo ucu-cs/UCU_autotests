@@ -9,19 +9,6 @@ working_dir="./temp"
 unpacked_arch_dir="./unpacked_archive"
 
 test1() {
-  shmakefile_path="./shmakefile"
-  shmake_path="./shell_make.sh"
-  file1_cpp_path="./file1.cpp"
-  file2_cpp_path="./file2.cpp"
-  main_cpp_path="./main_file.cpp"
-  file1_h_path="./file1.h"
-  file2_h_path="./file2.h"
-  file1_o_path="./file1.o"
-  file2_o_path="./file2.o"
-  main_o_path="./main_file.o"
-  needed_resources="../resources/shmakefiles/test1/shmakefile ../resources/main_file.cpp ../resources/file1.h ../resources/file2.h"
-  shmake_output_file="../test1_logs.txt"
-
   cp ${needed_resources} -r "./"
 
   echo "------------------------------"
@@ -30,11 +17,11 @@ test1() {
   eval "bash ./${shmake_path}" >> "./${shmake_output_file}" 2>&1
 
   if [ ! -e "./${main_o_path}" ]; then
-    echo "Fail! First target (main_file.o) was not created!"
+    echo "Fail! First target (${main_o_target}) was not created!"
     return 1
   fi
 
-  echo "Success! First target (main_file.o) was created!"
+  echo "Success! First target (${main_o_target}) was created!"
   old_time=$(stat -c %Y "./$main_o_path")
 
   sleep 1
@@ -60,8 +47,7 @@ test1() {
   fi
   echo "Success! First target was recreated after deletion!"
 
-  rm "./${main_o_path}"
-  rm "./${main_cpp_path}" "./${shmakefile_path}" "./${file1_h_path}" "./${file2_h_path}"
+  ((tests_passed++))
 
   echo ""
   echo "Test 1 finished successfully!"
@@ -69,21 +55,27 @@ test1() {
   return 0
 }
 
-test2() {
+test1_wrapper() {
   shmakefile_path="./shmakefile"
   shmake_path="./shell_make.sh"
   file1_cpp_path="./file1.cpp"
   file2_cpp_path="./file2.cpp"
   main_cpp_path="./main_file.cpp"
+  file1_h_path="./file1.h"
+  file2_h_path="./file2.h"
   file1_o_path="./file1.o"
-  file1_o_target="file1.o"
   file2_o_path="./file2.o"
-  file2_o_target="file2.o"
   main_o_path="./main_file.o"
   main_o_target="main_file.o"
-  needed_resources="../resources/shmakefiles/test2/shmakefile ../resources/file1.cpp ../resources/file1.h"
-  shmake_output_file="../test2_logs.txt"
+  needed_resources="../resources/shmakefiles/test1/shmakefile ../resources/main_file.cpp ../resources/file1.h ../resources/file2.h"
+  shmake_output_file="../test1_logs.txt"
+  test1 || true
+  set +o errexit
+  rm -f "./${main_o_path}" "./${main_cpp_path}" "./${shmakefile_path}" "./${file1_h_path}" "./${file2_h_path}"
+  set -o errexit
+}
 
+test2() {
   cp ${needed_resources} -r "./"
 
   echo "------------------------------"
@@ -122,8 +114,7 @@ test2() {
   fi
   echo "Success! Requested target was recreated after deletion!"
 
-  rm "./${file1_o_path}"
-  rm "./${file1_cpp_path}" "./${shmakefile_path}" "./${file1_h_path}"
+  ((tests_passed++))
 
   echo ""
   echo "Test 2 finished successfully!"
@@ -131,7 +122,7 @@ test2() {
   return 0
 }
 
-test3() {
+test2_wrapper() {
   shmakefile_path="./shmakefile"
   shmake_path="./shell_make.sh"
   file1_cpp_path="./file1.cpp"
@@ -143,9 +134,15 @@ test3() {
   file2_o_target="file2.o"
   main_o_path="./main_file.o"
   main_o_target="main_file.o"
-  needed_resources="../resources/shmakefiles/test3/shmakefile ../resources/file1.cpp ../resources/file1.h ../resources/file2.cpp ../resources/file2.h ../resources/main_file.cpp"
-  shmake_output_file="../test3_logs.txt"
+  needed_resources="../resources/shmakefiles/test2/shmakefile ../resources/file1.cpp ../resources/file1.h"
+  shmake_output_file="../test2_logs.txt"
+  test2 || true
+  set +o errexit
+  rm -f "./${file1_o_path}" "./${file1_cpp_path}" "./${shmakefile_path}" "./${file1_h_path}"
+  set -o errexit
+}
 
+test3() {
   cp ${needed_resources} -r "./"
 
   echo "------------------------------"
@@ -201,8 +198,7 @@ test3() {
   fi
   echo "Success! Requested targets were all successfully recreated after deletion!"
 
-  rm "./${file1_o_path}" "./${file2_o_path}" "./${main_o_path}"
-  rm "./${file1_cpp_path}" "./${shmakefile_path}" "./${file1_h_path}" "./${file2_cpp_path}" "./${file2_h_path}" "./${main_cpp_path}"
+  ((tests_passed++))
 
   echo ""
   echo "Test 3 finished successfully!"
@@ -210,20 +206,31 @@ test3() {
   return 0
 }
 
+test3_wrapper() {
+  shmakefile_path="./shmakefile"
+  shmake_path="./shell_make.sh"
+  file1_cpp_path="./file1.cpp"
+  file2_cpp_path="./file2.cpp"
+  main_cpp_path="./main_file.cpp"
+  file1_o_path="./file1.o"
+  file1_o_target="file1.o"
+  file2_o_path="./file2.o"
+  file2_o_target="file2.o"
+  main_o_path="./main_file.o"
+  main_o_target="main_file.o"
+  needed_resources="../resources/shmakefiles/test3/shmakefile ../resources/file1.cpp ../resources/file1.h ../resources/file2.cpp ../resources/file2.h ../resources/main_file.cpp"
+  shmake_output_file="../test3_logs.txt"
+  test3 || true
+  set +o errexit
+  rm -f "./${file1_o_path}" "./${file2_o_path}" "./${main_o_path}"
+  rm -f "./${file1_cpp_path}" "./${shmakefile_path}" "./${file1_h_path}" "./${file2_cpp_path}" "./${file2_h_path}" "./${main_cpp_path}"
+  set -o errexit
+}
+
 conduct_testing() {
-  tests_passed=0
-  test1
-  if [ $? -eq 0 ]; then
-    ((tests_passed++)) || true
-  fi
-  test2
-  if [ $? -eq 0 ]; then
-    ((tests_passed++)) || true
-  fi
-  test3
-  if [ $? -eq 0 ]; then
-    ((tests_passed++)) || true
-  fi
+  test1_wrapper
+  test2_wrapper
+  test3_wrapper
 }
 
 setup() {
@@ -282,7 +289,6 @@ setup() {
   echo ""
   echo "Setup ended successfully!"
   echo "------------------------------"
-
 }
 
 clean_up() {
@@ -291,7 +297,6 @@ clean_up() {
   rm -rf ./temp
   rm -rf ./"$unpacked_arch_dir"
   echo "Cleaned."
-  echo "Tests passed: ${tests_passed}/3"
 }
 
 # Parse arguments
@@ -308,5 +313,7 @@ arch_basename=$(basename "$arch_name")
 unpacked_arch_path="./${unpacked_arch_dir}/${arch_basename%.*}" # Remove extension and concatenate
 
 setup
-conduct_testing
+conduct_testing || true
 clean_up
+
+echo "Tests passed: ${tests_passed}/3"

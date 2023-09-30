@@ -7,8 +7,15 @@ The following script (shellmake_test.sh) purpose is to automate students' works 
 
 You will get logs and final report of total number of tests passed.
 
+## Debugging
+
+If you need more info, you can check log files generated, where all output of tested script is saved.
+
 ## Example
 
-![img.png](images/img.png)
-![img.png](images/img_1.png)
-![img_1.png](images/img_2.png)
+![command.png](images/command.png)
+![logs.png](images/logs.png)
+
+## Warning 
+
+Some problems are possible related to line endings on different systems (\r\n)
