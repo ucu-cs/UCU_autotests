@@ -143,6 +143,7 @@ test2_wrapper() {
 }
 
 test3() {
+  result=1
   cp ${needed_resources} -r "./"
 
   echo "------------------------------"
@@ -171,23 +172,26 @@ test3() {
 
   if [ "${old_time3}" -ne "${new_time3}" ]; then
     echo "Fail! Up to date target was updated!"
-    return 1
+    result=0
+  else
+    echo "Success! Up to date target was not touched!"
   fi
-  echo "Success! Up to date target was not touched!"
 
   if [ "${old_time1}" -eq "${new_time1}" ]; then
-      echo "Fail! Requested target was not updated after modifying dependency file!"
-      return 1
-    fi
-  echo "Success! Requested target was updated after modifying dependency file!"
+    echo "Fail! Requested target was not updated after modifying dependency file!"
+    result=0
+  else
+    echo "Success! Requested target was updated after modifying dependency file!"
+  fi
 
   if [ "${old_time2}" -eq "${new_time2}" ]; then
-      echo "Fail! Requested target was not updated after modifying dependency file!"
-      return 1
-    fi
-  echo "Success! Requested target was updated after modifying dependency file!"
+    echo "Fail! Requested target was not updated after modifying dependency file!"
+    result=0
+  else
+    echo "Success! Requested target was updated after modifying dependency file!"
+  fi
 
-  rm "./${main_o_path}" "./${file1_o_path}" "./${file2_o_path}"
+  rm -f "./${main_o_path}" "./${file1_o_path}" "./${file2_o_path}"
   eval "bash ${shmake_path} ${main_o_target} ${file1_o_target} ${file2_o_target}" >> "./${shmake_output_file}" 2>&1
   if [ ! -e "./${file1_o_path}" ] || [ ! -e "./${file2_o_path}" ] || [ ! -e "./${main_o_path}" ]; then
     echo "Fail! One or more of requested targets was not recreated after deletion!"
@@ -198,10 +202,14 @@ test3() {
   fi
   echo "Success! Requested targets were all successfully recreated after deletion!"
 
-  ((tests_passed++))
+  ((tests_passed+=result))
 
   echo ""
-  echo "Test 3 finished successfully!"
+  if [ "${result}" -eq 1 ]; then
+    echo "Test 3 finished successfully!"
+  else
+    echo "Test 3 finished with failure!"
+  fi
   echo "------------------------------"
   return 0
 }
