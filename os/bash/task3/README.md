@@ -18,4 +18,4 @@ If you need more info, you can check log files generated, where all output of te
 
 ## Warning 
 
-Some problems are possible related to line endings on different systems (\r\n)
+Some problems related to line endings are possible on different operating systems (\r\n), so be careful with that.
