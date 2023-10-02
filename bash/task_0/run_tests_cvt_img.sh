@@ -7,4 +7,4 @@ if [ -n "$(grep sudo my_cvt_img.sh)" ]; then
 fi
 tar xpvf test.tar
 cd test
-./test_cvt_img.sh
+../test_cvt_img.sh
