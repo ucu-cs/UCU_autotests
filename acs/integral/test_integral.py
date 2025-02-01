@@ -45,10 +45,10 @@ def run(command: list[str], timeout: int = 20) -> tuple[str, str] | None:
             command, capture_output=True, text=True, timeout=timeout
         )
     except subprocess.CalledProcessError:
-        print("Failed")
+        print(f"Failed to execute {command}")
         return None
     except subprocess.TimeoutExpired:
-        print("Timed out")
+        print(f"Timed out during execution of {command}")
         return None
     return process.stdout, process.stderr
 
@@ -80,11 +80,11 @@ def test_format(results: list[tuple[str, str] | None]) -> bool:
     print("Testing the format of output result")
     for result in results:
         if result is None:
-            print(f"Result is None: {result}")
+            print("Found None result")
             return False
         lines = result[0].strip().split("\n")
         if len(lines) != 4:
-            print(f"Wrong number of lines: {len(lines)}")
+            print(f"Wrong number of lines: '{len(lines)}' in {result}")
             return False
         for i in lines:
             try:
@@ -99,7 +99,7 @@ def test_result(results: list[tuple[str, str] | None]) -> bool:
     print("Testing the correctness of output result")
     for i, result in enumerate(results):
         if result is None:
-            print(f"Result is None: {result}")
+            print("Found None result")
             return False
         lines = result[0].split("\n")
         if abs(float(lines[0]) - functions[i].result) >= functions[i].epsilon:
