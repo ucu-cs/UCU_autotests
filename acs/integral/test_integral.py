@@ -15,6 +15,13 @@ class Function:
     timeout: int = 30
 
 
+@dataclass
+class Result:
+    name: str
+    stdout: str | None
+    stderr: str | None
+
+
 functions = [
     Function(1, "", 4.54544762 * 10**6, 20),
     Function(2, "", 8.572082414 * 10**5, 20),
@@ -39,29 +46,35 @@ def cleanup(project_path: str, build_path: str) -> None:
     shutil.rmtree(build_path)
 
 
-def run(command: list[str], timeout: int = 20) -> tuple[str, str] | None:
+def run(command: list[str], func: Function | None = None) -> Result:
+    if func is not None:
+        name = f"Function #{func.number}"
+        timeout = func.timeout
+    else:
+        name = f"Command {' '.join(command)}"
+        timeout = 30
     try:
         process = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout
         )
     except subprocess.CalledProcessError:
         print(f"Failed to execute {command}")
-        return None
+        return Result(name, None, None)
     except subprocess.TimeoutExpired:
         print(f"Timed out during execution of {command}")
-        return None
-    return process.stdout, process.stderr
+        return Result(name, None, None)
+    return Result(name, process.stdout, process.stderr)
 
 
 def build(project_path: str) -> bool:
     print("Building project: " + project_path)
     return (
-        run(["cmake", project_path]) is not None
-        and run(["cmake", "--build", "."]) is not None
+        run(["cmake", project_path]).stdout is not None
+        and run(["cmake", "--build", "."]).stdout is not None
     )
 
 
-def get_results(project_path: str) -> list[tuple[str, str] | None]:
+def get_results(project_path: str) -> list[Result]:
     print("Running tests")
     return [
         run(
@@ -70,19 +83,19 @@ def get_results(project_path: str) -> list[tuple[str, str] | None]:
                 str(func.number),
                 os.path.join(project_path, func.config),
             ],
-            func.timeout,
+            func,
         )
         for func in functions
     ]
 
 
-def test_format(results: list[tuple[str, str] | None]) -> bool:
+def test_format(results: list[Result]) -> bool:
     print("Testing the format of output result")
     for result in results:
-        if result is None:
-            print("Found None result")
+        if result.stdout is None:
+            print(f"Found None result: {result}")
             return False
-        lines = result[0].strip().split("\n")
+        lines = result.stdout.strip().split("\n")
         if len(lines) != 4:
             print(f"Wrong number of lines: '{len(lines)}' in {result}")
             return False
@@ -95,16 +108,16 @@ def test_format(results: list[tuple[str, str] | None]) -> bool:
     return True
 
 
-def test_result(results: list[tuple[str, str] | None]) -> bool:
+def test_result(results: list[Result]) -> bool:
     print("Testing the correctness of output result")
     for i, result in enumerate(results):
-        if result is None:
+        if result.stdout is None:
             print("Found None result")
             return False
-        lines = result[0].split("\n")
+        lines = result.stdout.split("\n")
         if abs(float(lines[0]) - functions[i].result) >= functions[i].epsilon:
             print(
-                f"Wrong result: {lines[0]} != {functions[i].result} (+-{functions[i].epsilon})"
+                f"\nWrong result: {lines[0]} != {functions[i].result} (+-{functions[i].epsilon})\n{result=}\n"
             )
             return False
     return True
@@ -117,11 +130,13 @@ def main(project_path: str):
     results = get_results(project_path)
 
     if not test_format(results):
-        print("Format test failed")
+        print("Format tests failed")
         return
+    print("Format tests passed")
     if not test_result(results):
-        print("Result test failed")
+        print("Result correctness tests failed")
         return
+    print("Result tests passed")
 
     print("All tests passed")
 
@@ -159,9 +174,36 @@ max_iter=10""",
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("build_path")
-    parser.add_argument("-c", "--clean", action="store_true")
+    parser.add_argument(
+        "-b",
+        "--build_path",
+        help="Path to the directory, where to build the project",
+        type=str,
+        default="tests-build",
+    )
+    parser.add_argument(
+        "-c",
+        "--clean",
+        action="store_true",
+        help="Whether to clean the build directory after running tests",
+    )
+    parser.add_argument(
+        "-p",
+        "--print-tests",
+        action="store_true",
+        help="Whether to print tests instead of running them",
+    )
     args = parser.parse_args()
+    tests: bool = args.print_tests
+    if tests:
+        for i, config in enumerate(configs):
+            print("=============================")
+            print(f"Function #{functions[i].number}")
+            print(f"Expected result: {functions[i].result}")
+            print()
+            print("Config:")
+            print(config)
+        exit(0)
     build_path: str = args.build_path
     clean: bool = args.clean
 
