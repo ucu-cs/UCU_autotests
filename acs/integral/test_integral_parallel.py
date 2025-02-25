@@ -10,6 +10,17 @@ import tempfile
 
 @dataclass
 class Function:
+    """Represents a function to be integrated.
+
+    Attributes:
+        number: The number of the function.
+        config: String path to configuration file.
+        result: Expected result of the integration.
+        epsilon: Maximum allowable error in the result.
+        threads: Number of threads to use for the integration.
+        timeout: Maximum execution time in seconds.
+    """
+
     number: int
     config: str
     result: float
@@ -20,11 +31,20 @@ class Function:
 
 @dataclass
 class Result:
+    """Represents the result of running a command.
+
+    Attributes:
+        name: A string representation of the function that was tested.
+        stdout: Captured standard output, or None if execution failed.
+        stderr: Captured standard error, or None if execution failed.
+    """
+
     name: str
     stdout: str | None
     stderr: str | None
 
 
+# Predefined functions to test with their expected results and error tolerances
 functions = [
     Function(1, "", 4.54544762 * 10**6, 20, threads=1),
     Function(2, "", 8.572082414 * 10**5, 20, threads=1),
@@ -33,6 +53,17 @@ functions = [
 
 
 def setup(build_path: str = "build") -> str:
+    """Sets up the build environment.
+
+    Creates a build directory if it doesn't exist and
+    changes the current directory to it.
+
+    Args:
+        build_path: Path to the build directory.
+
+    Returns:
+        Original project path before changing to build directory.
+    """
     if not os.path.exists(build_path):
         print("Creating build directory: " + build_path)
         os.makedirs(build_path)
@@ -44,14 +75,32 @@ def setup(build_path: str = "build") -> str:
 
 
 def cleanup(project_path: str, build_path: str) -> None:
+    """Cleans up the build environment.
+
+    Changes back to the original project directory and removes the build directory.
+
+    Args:
+        project_path: Original project path to return to.
+        build_path: Path to the build directory to remove.
+    """
     print("Cleaning up")
     os.chdir(project_path)
     shutil.rmtree(build_path)
 
 
 def run(command: list[str], func: Function | None = None) -> Result:
+    """Runs a command and captures its output.
+
+    Args:
+        command: List of command-line arguments to execute.
+        func: Optional Function object providing arguments for the integral.
+            If not present, the command will be called as is.
+
+    Returns:
+        Result object containing command output.
+    """
     if func is not None:
-        name = f"Function #{func.number}"
+        name = f"Function #{func.number}, threads: {func.threads}"
         timeout = func.timeout
     else:
         name = f"Command {' '.join(command)}"
@@ -70,9 +119,17 @@ def run(command: list[str], func: Function | None = None) -> Result:
 
 
 def build(project_path: str) -> bool:
+    """Builds the project using cmake.
+
+    Args:
+        project_path: Path to the project root directory.
+
+    Returns:
+        True if the build was successful, False otherwise.
+    """
     print("Building project: " + project_path)
     return (
-        run(["cmake", project_path]).stdout is not None
+        run(["cmake", "-DCMAKE_BUILD_TYPE=Release", project_path]).stdout is not None
         and run(["cmake", "--build", "."]).stdout is not None
     )
 
@@ -80,7 +137,16 @@ def build(project_path: str) -> bool:
 def get_results(
     project_path: str, binary_name: str, functions_to_run: list[Function]
 ) -> list[Result]:
-    print("Running tests")
+    """Runs the integration binary for each function and collects results.
+
+    Args:
+        project_path: Path to the project root directory.
+        binary_name: Name of the compiled binary to run.
+        functions_to_run: List of Function objects to test.
+
+    Returns:
+        List of Result objects containing the output for each function.
+    """
     return [
         run(
             [
@@ -96,7 +162,16 @@ def get_results(
 
 
 def test_format(results: list[Result]) -> bool:
-    print("Testing the format of output result")
+    """Tests if the output format is correct.
+
+    Expected format is 4 lines, each containing a number (convertible to float).
+
+    Args:
+        results: List of Result objects to check.
+
+    Returns:
+        True if all results have the correct format, False otherwise.
+    """
     for result in results:
         if result.stdout is None:
             print(f"Found None result: {result}")
@@ -115,7 +190,18 @@ def test_format(results: list[Result]) -> bool:
 
 
 def test_consistency(more_results: list[list[Result]]) -> bool:
-    print("Testing the consistency of output result")
+    """Tests if multiple runs produce consistent results.
+
+    Compares the results of multiple runs to check if they are within the
+    allowed error range.
+
+    Args:
+        more_results: List of lists of Result objects from multiple runs.
+
+    Returns:
+        True if all results are consistent, False otherwise.
+    """
+    success = True
     for i, results in enumerate(more_results):
         if i == len(more_results) - 1:
             break
@@ -135,12 +221,21 @@ def test_consistency(more_results: list[list[Result]]) -> bool:
                 print(
                     f"\nWrong result: {lines[0]} != {next_lines[0]} (+-{functions[j].epsilon})\n{result=}\n{next_result=}\n"
                 )
-                return False
-    return True
+                success = False
+    return success
 
 
 def test_result(results: list[Result]) -> bool:
-    print("Testing the correctness of output result")
+    """Tests if the calculated results match the expected values.
+
+    Args:
+        results: List of Result objects to check.
+
+    Returns:
+        True if all results match the expected values within the error range,
+        False otherwise.
+    """
+    success = True
     for i, result in enumerate(results):
         if result.stdout is None:
             print("Found None result")
@@ -150,12 +245,23 @@ def test_result(results: list[Result]) -> bool:
             print(
                 f"\nWrong result: {lines[0]} != {functions[i].result} (+-{functions[i].epsilon})\n{result=}\n"
             )
-            return False
-    return True
+            success = False
+    return success
 
 
 def test_speed(results: list[Result], threaded_results: list[Result]) -> bool:
-    print("Testing the speed of threaded")
+    """Tests if multithreaded execution is faster than single-threaded.
+
+    Compares the execution time of single-threaded and multithreaded runs.
+
+    Args:
+        results: List of Result objects from single-threaded runs.
+        threaded_results: List of Result objects from multithreaded runs.
+
+    Returns:
+        True if all multithreaded runs are faster, False otherwise.
+    """
+    success = True
     for i, result in enumerate(results):
         if result.stdout is None:
             print("Found None result")
@@ -164,15 +270,26 @@ def test_speed(results: list[Result], threaded_results: list[Result]) -> bool:
         if threaded_result.stdout is None:
             print("Found None result")
             return False
-        lines = result.stdout.split("\n")
-        threaded_lines = threaded_result.stdout.split("\n")
-        if lines[3] > threaded_lines[3]:
-            print(f"\n{result=} is faster than {threaded_result=}\n")
-            return False
-    return True
+        regular_time = int(result.stdout.split("\n")[3])
+        threaded_time = int(threaded_result.stdout.split("\n")[3])
+        if threaded_time > regular_time:
+            print(f"\n{threaded_result=} is slower than {result=}\n")
+            success = False
+    return success
 
 
 def get_next_prime(prev: float = 0) -> float:
+    """Generates a prime number for the first few times - then just some bigger number.
+
+    Uses a simple formula to generate a sequence of values for testing
+    different thread counts.
+
+    Args:
+        prev: Previous value in the sequence.
+
+    Returns:
+        Next value in the sequence.
+    """
     if prev == 0:
         prev = 2.920050977316134712092562917112019
     floor = math.floor(prev)
@@ -180,24 +297,69 @@ def get_next_prime(prev: float = 0) -> float:
 
 
 def main(
-    project_path: str, binary_name: str, consistency_check: bool, speed_check: bool
+    project_path: str,
+    binary_name: str,
+    consistency_check: bool,
+    speed_check: bool,
+    print_tests: bool,
 ):
+    """Main function to run all tests.
+
+    Builds the project and runs format, consistency, correctness, and speed tests.
+
+    Args:
+        project_path: Path to the project root directory.
+        binary_name: Name of the compiled binary to test.
+        consistency_check: Whether to perform consistency checks.
+        speed_check: Whether to perform speed checks.
+        print_tests: Whether to print info about tests instead of running them.
+    """
+    consistency_threads = [get_next_prime()]
+    for i in range(len(functions)):
+        consistency_threads.append(get_next_prime(consistency_threads[i]))
+    consistency_threads.pop(0)
+    for i, threads in enumerate(consistency_threads):
+        consistency_threads[i] = math.floor(threads)
+    consistency_runs = 2
+
+    speed_threads = [4, 7]
+
+    if print_tests:
+        for i, config in enumerate(configs):
+            print("=============================")
+            print(f"{functions[i]}")
+            print()
+            print("Config:")
+            print(config)
+        print("==============================")
+        print("Number of threads to test consistency:")
+        print(consistency_threads)
+        print("Number of runs to test consistency:", consistency_runs)
+        print("==============================")
+        print("Number of threads to test speed:")
+        print(speed_threads)
+        return
+
     if not build(project_path):
         print("Build failed")
         return
+
+    print("Running tests")
     results = get_results(project_path, binary_name, functions)
     additional_functions = [dataclasses.replace(func) for func in functions]
 
+    print("=============================")
+    print("Testing the format of output")
     if not test_format(results):
         print("Format tests failed")
         return
     print("Format tests passed")
     if consistency_check:
+        print("=============================")
+        print("Testing the consistency of result")
         more_results = [results]
         for i in range(len(additional_functions)):
-            additional_functions[i].threads = math.floor(
-                get_next_prime(1 if i == 0 else additional_functions[i - 1].threads)
-            )
+            additional_functions[i].threads = consistency_threads[i]
         more_results += [
             get_results(project_path, binary_name, additional_functions)
             for _ in range(2)
@@ -206,24 +368,28 @@ def main(
             print("Consistency tests failed")
             return
         print("Consistency tests passed")
+    print("=============================")
+    print("Testing the correctness of results")
     if not test_result(results):
-        print("Result correctness tests failed")
+        print("Correctness tests failed")
         return
+    print("Correctness tests passed")
     if speed_check:
-        for i in range(len(additional_functions)):
-            additional_functions[i].threads = 4
-        many_threaded_results = [get_results(project_path, binary_name, additional_functions)]
-        for i in range(len(additional_functions)):
-            additional_functions[i].threads = 7
-        many_threaded_results.append(get_results(project_path, binary_name, functions))
-        if not all(test_speed(results, threaded_results) for threaded_results in many_threaded_results):
-            print("Speed tests failed at 4 threads")
-            return
+        print("=============================")
+        print("Testing the speed of different number of threads")
+        for threads in speed_threads:
+            for i in range(len(additional_functions)):
+                additional_functions[i].threads = threads
+            threaded_results = get_results(project_path, binary_name, additional_functions)
+            if not test_speed(results, threaded_results):
+                print(f"Speed tests failed at {threads} threads")
+                return
     print("Result tests passed")
 
     print("All tests passed")
 
 
+# Configuration strings for the three test functions
 configs = [
     """abs_err=0.0005
 rel_err = 0.00000002
@@ -296,16 +462,7 @@ if __name__ == "__main__":
         help="Whether to check if 1 thread is slower than several threads",
     )
     args = parser.parse_args()
-    tests: bool = args.print_tests
-    if tests:
-        for i, config in enumerate(configs):
-            print("=============================")
-            print(f"Function #{functions[i].number}")
-            print(f"Expected result: {functions[i].result}")
-            print()
-            print("Config:")
-            print(config)
-        exit(0)
+    print_tests: bool = args.print_tests
     build_path: str = args.build_path
     binary_name: str = args.binary_name
     clean: bool = args.clean
@@ -326,7 +483,7 @@ if __name__ == "__main__":
         temp_file.close()
 
     try:
-        main(project_path, binary_name, consistency_check, speed_check)
+        main(project_path, binary_name, consistency_check, speed_check, print_tests)
     finally:
         for temp_file in temp_files:
             os.unlink(temp_file.name)
