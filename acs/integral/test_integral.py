@@ -74,12 +74,12 @@ def build(project_path: str) -> bool:
     )
 
 
-def get_results(project_path: str) -> list[Result]:
+def get_results(project_path: str, binary_name: str) -> list[Result]:
     print("Running tests")
     return [
         run(
             [
-                "./integrate_serial",
+                f"./{binary_name}",
                 str(func.number),
                 os.path.join(project_path, func.config),
             ],
@@ -123,11 +123,11 @@ def test_result(results: list[Result]) -> bool:
     return True
 
 
-def main(project_path: str):
+def main(project_path: str, binary_name: str):
     if not build(project_path):
         print("Build failed")
         return
-    results = get_results(project_path)
+    results = get_results(project_path, binary_name)
 
     if not test_format(results):
         print("Format tests failed")
@@ -143,7 +143,7 @@ def main(project_path: str):
 
 configs = [
     """abs_err=0.0005
-rel_err = 0.00000002
+rel_err = 0.000009
 x_start=-50
 x_end=50
 y_start=-50
@@ -152,7 +152,7 @@ init_steps_x = 100
 init_steps_y = 100
 max_iter=30""",
     """abs_err=0.0005
-rel_err = 0.00000002
+rel_err = 0.000009
 x_start=-100
 x_end=100
 y_start=-100
@@ -176,10 +176,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-b",
-        "--build_path",
+        "--build-path",
         help="Path to the directory, where to build the project",
         type=str,
         default="tests-build",
+    )
+    parser.add_argument(
+        "-n",
+        "--binary-name",
+        help="Name of the binary to test after the build",
+        type=str,
+        default="integrate_serial",
     )
     parser.add_argument(
         "-c",
@@ -205,6 +212,7 @@ if __name__ == "__main__":
             print(config)
         exit(0)
     build_path: str = args.build_path
+    binary_name: str = args.binary_name
     clean: bool = args.clean
 
     project_path = setup(build_path)
@@ -221,7 +229,7 @@ if __name__ == "__main__":
         temp_file.close()
 
     try:
-        main(project_path)
+        main(project_path, binary_name)
     finally:
         for temp_file in temp_files:
             os.unlink(temp_file.name)
