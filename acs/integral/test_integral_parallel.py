@@ -392,7 +392,7 @@ def main(
 # Configuration strings for the three test functions
 configs = [
     """abs_err=0.0005
-rel_err = 0.00000002
+rel_err = 0.000009
 x_start=-50
 x_end=50
 y_start=-50
@@ -401,7 +401,7 @@ init_steps_x = 100
 init_steps_y = 100
 max_iter=30""",
     """abs_err=0.0005
-rel_err = 0.00000002
+rel_err = 0.000009
 x_start=-100
 x_end=100
 y_start=-100
