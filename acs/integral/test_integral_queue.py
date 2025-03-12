@@ -27,7 +27,7 @@ class Function:
     result: float
     epsilon: float
     threads: int = 1
-    chunk_size: int = 100
+    chunk_size: int = 500
     timeout: int = 30
 
 
@@ -46,11 +46,40 @@ class Result:
     stderr: str | None
 
 
-# Predefined functions to test with their expected results and error tolerances
 functions = [
-    Function(1, "", 4.54544762 * 10**6, 20, threads=1, chunk_size=5000),
-    Function(2, "", 8.572082414 * 10**5, 20, threads=1, chunk_size=5000),
-    Function(3, "", -1.604646665, 0.1, threads=1, chunk_size=5000),
+    Function(1, "", 4.54544762 * 10**6, 20, threads=1),
+    Function(2, "", 8.572082414 * 10**5, 20, threads=1),
+    Function(3, "", -1.604646665, 0.1, threads=1),
+]
+
+configs = [
+    """abs_err=0.0005
+rel_err = 0.000009
+x_start=-50
+x_end=50
+y_start=-50
+y_end=50
+init_steps_x = 100
+init_steps_y = 100
+max_iter=30""",
+    """abs_err=0.0005
+rel_err = 0.000009
+x_start=-100
+x_end=100
+y_start=-100
+y_end=100
+init_steps_x = 100
+init_steps_y = 100
+max_iter=30""",
+    """abs_err=0.000001
+rel_err = 0.00002
+x_start=-10
+x_end=10
+y_start=-10
+y_end=10
+init_steps_x = 100
+init_steps_y = 100
+max_iter=10""",
 ]
 
 
@@ -103,6 +132,8 @@ def run(command: list[str], func: Function | None = None) -> Result:
     """
     if func is not None:
         name = f"Function #{func.number}, threads: {func.threads}"
+        if func.chunk_size:
+            name += f", chunk size: {func.chunk_size}"
         timeout = func.timeout
     else:
         name = f"Command {' '.join(command)}"
@@ -157,8 +188,14 @@ def get_results(
                 str(func.number),
                 os.path.join(project_path, func.config),
                 str(func.threads),
-                str(func.chunk_size)
-            ],
+            ]
+            + (
+                [
+                    str(func.chunk_size),
+                ]
+                if func.chunk_size
+                else []
+            ),
             func,
         )
         for func in functions_to_run
@@ -253,62 +290,34 @@ def test_result(results: list[Result]) -> bool:
     return success
 
 
-def test_speed(results: list[Result], threaded_results: list[Result]) -> bool:
+def test_speed(results_slower: list[Result], results_faster: list[Result]) -> bool:
     """Tests if multithreaded execution is faster than single-threaded.
 
-    Compares the execution time of single-threaded and multithreaded runs.
+    Compares the execution time of an expectedly slower and faster runs.
 
     Args:
-        results: List of Result objects from single-threaded runs.
-        threaded_results: List of Result objects from multithreaded runs.
+        results: List of Result objects from expectedly slower runs.
+        threaded_results: List of Result objects from expectedly faster runs.
 
     Returns:
         True if all multithreaded runs are faster, False otherwise.
     """
     success = True
-    for i, result in enumerate(results):
-        if result.stdout is None:
+    for i, expectedly_slower in enumerate(results_slower):
+        if expectedly_slower.stdout is None:
             print("Found None result")
             return False
-        threaded_result = threaded_results[i]
-        if threaded_result.stdout is None:
+        expectedly_faster = results_faster[i]
+        if expectedly_faster.stdout is None:
             print("Found None result")
             return False
-        regular_time = int(result.stdout.split("\n")[3])
-        threaded_time = int(threaded_result.stdout.split("\n")[3])
-        if threaded_time > regular_time:
-            print(f"\n{threaded_result=} is slower than {result=}\n")
+        time_slower = int(expectedly_slower.stdout.split("\n")[3])
+        time_faster = int(expectedly_faster.stdout.split("\n")[3])
+        if time_faster > time_slower:
+            print(f"\n{expectedly_faster=} is slower than {expectedly_slower=}\n")
             success = False
     return success
 
-def test_chunk_size(results: list[Result], chunked_results: list[Result]) -> bool:
-    """Tests if the output chunk_size influences computation time is correct.
-
-    Expected format is lists, each containing 4 Results for 1,
-    and 5000 sizes of chunks
-
-    Args:
-        chunked_results: List of Result objects with chunk size 1.
-        results: List of Result objects with default chunk size.
-
-    Returns:
-        True if time for small chunk is larger than larger ones
-    """
-    success = True
-    for i, chunked_result in enumerate(chunked_results):
-        if chunked_result.stdout is None:
-            print("Found None result")
-            return False
-        result = results[i]
-        if result.stdout is None:
-            print("Found None result")
-            return False
-        chunked_result_time = int(chunked_result.stdout.split("\n")[3])
-        result_time = int(result.stdout.split("\n")[3])
-        if chunked_result_time < result_time:
-            print(f"\n{chunked_result=} is faster than {result=}\n")
-            success = False
-    return success
 
 def get_next_prime(prev: float = 0) -> float:
     """Generates a prime number for the first few times - then just some bigger number.
@@ -412,57 +421,32 @@ def main(
         for threads in speed_threads:
             for i in range(len(additional_functions)):
                 additional_functions[i].threads = threads
-            threaded_results = get_results(project_path, binary_name, additional_functions)
+            threaded_results = get_results(
+                project_path, binary_name, additional_functions
+            )
             if not test_speed(results, threaded_results):
                 print(f"Speed tests failed at {threads} threads")
                 return
-        print("Result tests passed")
+        print("Threaded tests passed")
     if chunk_size_check:
         print("=============================")
         print("Testing the speed of different chunk sizes")
         for i in range(len(additional_functions)):
-            additional_functions[i].chunk_size = 1
-            additional_functions[i].threads = 1
+            additional_functions[i].chunk_size = 4
+            additional_functions[i].threads = 2
             additional_functions[i].timeout = 120
-        chunked_results = get_results(project_path, binary_name, additional_functions)
-        if not test_chunk_size(results, chunked_results):
-            print(f"Chunk size influence test failed. Chunk of size 1 is faster than default")
+        results_4 = get_results(project_path, binary_name, additional_functions)
+        for i in range(len(additional_functions)):
+            additional_functions[i].chunk_size = 3
+            additional_functions[i].threads = 2
+            additional_functions[i].timeout = 120
+        results_3 = get_results(project_path, binary_name, additional_functions)
+        if not test_speed(results_3, results_4):
+            print("Chunk size influence test failed.")
             return
         print("Chunk size test passed")
 
     print("All tests passed")
-
-
-# Configuration strings for the three test functions
-configs = [
-    """abs_err=0.0005
-rel_err = 0.000009
-x_start=-50
-x_end=50
-y_start=-50
-y_end=50
-init_steps_x = 100
-init_steps_y = 100
-max_iter=30""",
-    """abs_err=0.0005
-rel_err = 0.000009
-x_start=-100
-x_end=100
-y_start=-100
-y_end=100
-init_steps_x = 100
-init_steps_y = 100
-max_iter=30""",
-    """abs_err=0.000001
-rel_err = 0.00002
-x_start=-10
-x_end=10
-y_start=-10
-y_end=10
-init_steps_x = 100
-init_steps_y = 100
-max_iter=10""",
-]
 
 
 if __name__ == "__main__":
@@ -479,7 +463,7 @@ if __name__ == "__main__":
         "--binary-name",
         help="Name of the binary to test after the build",
         type=str,
-        default="integrate_parallel_queue",
+        required=False,
     )
     parser.add_argument(
         "-c",
@@ -497,7 +481,7 @@ if __name__ == "__main__":
         "-C",
         "--consistency",
         action="store_true",
-        help="Whether to check for consistent results on several attempts",
+        help="Whether to check for consistent result values on several attempts",
     )
     parser.add_argument(
         "-s",
@@ -506,11 +490,16 @@ if __name__ == "__main__":
         help="Whether to check if 1 thread is slower than several threads",
     )
     parser.add_argument(
-        "-ch",
-        "--chunk_size",
+        "-k",
+        "--chunk-size",
         action="store_true",
-        help="Whether to check if chunk size of 1 point is slower than 5000 points per chunk. Takes some time due to "+
-             "small chunk size and repetitive calls. Might throw timeout error on slow machines."
+        help="Whether to check if chunk size:threads of 3:2 is slower than 4:2. Only applicable for queue and tpool lab types",
+    )
+    parser.add_argument(
+        "lab_type",
+        help="Type of lab to test",
+        type=str,
+        choices=["serial", "parallel", "queue", "tpool"],
     )
 
     args = parser.parse_args()
@@ -521,6 +510,24 @@ if __name__ == "__main__":
     consistency_check: bool = args.consistency
     speed_check: bool = args.speed
     chunk_size_check: bool = args.chunk_size
+    lab_type: str = args.lab_type
+
+    to_chunk = lab_type in ["queue", "tpool"]
+    if not to_chunk:
+        for i in functions:
+            i.chunk_size = 0
+    if not to_chunk and chunk_size_check:
+        print(
+            f"WARNING: Chunk size check not applicable for lab {args.lab_type} - setting it to False"
+        )
+        chunk_size_check = False
+    if not binary_name:
+        binary_name = {
+            "serial": "integrate_serial",
+            "parallel": "integrate_parallel",
+            "queue": "integrate_parallel_queue",
+            "tpool": "integrate_parallel_tpool",
+        }[lab_type]
 
     project_path = setup(build_path)
 
@@ -536,7 +543,13 @@ if __name__ == "__main__":
         temp_file.close()
 
     try:
-        main(project_path, binary_name, consistency_check, speed_check, print_tests)
+        main(
+            project_path,
+            binary_name,
+            consistency_check,
+            speed_check,
+            print_tests,
+        )
     finally:
         for temp_file in temp_files:
             os.unlink(temp_file.name)
