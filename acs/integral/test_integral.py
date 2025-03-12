@@ -462,17 +462,13 @@ def main(
         logging.info("=============================")
         logging.info("Testing the speed of different chunk sizes")
         for i in range(len(additional_functions)):
-            params = chunk_size_check_params[
-                "should be faster"
-            ]
+            params = chunk_size_check_params["should be faster"]
             additional_functions[i].chunk_size = params["chunk_size"]
             additional_functions[i].threads = params["threads"]
             additional_functions[i].timeout = params["timeout"]
         results_faster = get_results(project_path, binary_name, additional_functions)
         for i in range(len(additional_functions)):
-            params = chunk_size_check_params[
-                "should be slower"
-            ]
+            params = chunk_size_check_params["should be slower"]
             additional_functions[i].chunk_size = params["chunk_size"]
             additional_functions[i].threads = params["threads"]
             additional_functions[i].timeout = params["timeout"]
