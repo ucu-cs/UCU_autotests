@@ -33,6 +33,18 @@ class Function:
     timeout: int = 30
 
 
+class Command:
+    """Represents a command to be executed.
+
+    Attributes:
+        command: List of command-line arguments to execute.
+        timeout: Maximum execution time in seconds.
+    """
+
+    command: list[str]
+    timeout: int
+
+
 @dataclass
 class Result:
     """Represents the result of running a command.
@@ -121,7 +133,7 @@ def cleanup(project_path: str, build_path: str) -> None:
     shutil.rmtree(build_path)
 
 
-def run(command: list[str], func: Function | None = None) -> Result:
+def run(command: Command, func: Function | None = None) -> Result:
     """Runs a command and captures its output.
 
     Args:
@@ -138,13 +150,12 @@ def run(command: list[str], func: Function | None = None) -> Result:
             name += f", threads: {func.threads}"
         if func.chunk_size:
             name += f", chunk size: {func.chunk_size}"
-        timeout = func.timeout
     else:
-        name = f"Command {' '.join(command)}"
-        timeout = 30
+        name = f"Command {' '.join(command.command)}"
+    timeout = command.timeout
     try:
         process = subprocess.run(
-            command, capture_output=True, text=True, timeout=timeout
+            command.command, capture_output=True, text=True, timeout=timeout
         )
     except subprocess.CalledProcessError:
         logging.error(f"Failed to execute {command}")
@@ -167,8 +178,9 @@ def build(project_path: str) -> bool:
     logging.info("Building project: " + project_path)
 
     return (
-        run(["cmake", "-DCMAKE_BUILD_TYPE=Release", project_path]).stdout is not None
-        and run(["cmake", "--build", "."]).stdout is not None
+        run(Command(["cmake", "-DCMAKE_BUILD_TYPE=Release", project_path])).stdout
+        is not None
+        and run(Command(["cmake", "--build", "."])).stdout is not None
     )
 
 
@@ -187,24 +199,27 @@ def get_results(
     """
     return [
         run(
-            [
-                f"./{binary_name}",
-                str(func.number),
-                os.path.join(project_path, func.config),
-            ]
-            + (
+            Command(
                 [
-                    str(func.threads),
+                    f"./{binary_name}",
+                    str(func.number),
+                    os.path.join(project_path, func.config),
                 ]
-                if func.threads
-                else []
-            )
-            + (
-                [
-                    str(func.chunk_size),
-                ]
-                if func.chunk_size
-                else []
+                + (
+                    [
+                        str(func.threads),
+                    ]
+                    if func.threads
+                    else []
+                )
+                + (
+                    [
+                        str(func.chunk_size),
+                    ]
+                    if func.chunk_size
+                    else []
+                ),
+                func.timeout,
             ),
             func,
         )
@@ -536,6 +551,31 @@ if __name__ == "__main__":
         choices=["debug", "info", "warning", "error", "critical"],
     )
     parser.add_argument(
+        "-t",
+        "--timeout",
+        help="The default timeout for commands (currently only cmake builds)",
+        type=int,
+        default=45,
+    )
+    parser.add_argument(
+        "--timeout-1",
+        help="The timeout for the first function",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
+        "--timeout-2",
+        help="The timeout for the second function",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
+        "--timeout-3",
+        help="The timeout for the third function",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
         "lab_type",
         help="Type of lab to test",
         type=str,
@@ -588,6 +628,14 @@ if __name__ == "__main__":
         }[lab_type]
         if sys.platform == "win32":
             binary_name += ".exe"
+
+    @dataclass
+    class Command:
+        command: list[str]
+        timeout: int = args.timeout
+
+    for func in functions:
+        func.timeout = getattr(args, f"timeout_{func.number}")
 
     project_path = setup(build_path)
 
