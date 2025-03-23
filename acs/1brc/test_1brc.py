@@ -23,13 +23,6 @@ class Task:
 
 @dataclass
 class Result:
-    """Represents the result of running a command.
-
-    Attributes:
-        name: A string representation of the config that was tested.
-        stdout: Captured standard output, or None if execution failed.
-        stderr: Captured standard error, or None if execution failed.
-    """
     name: str
     stdout: str | None
     stderr: str | None
@@ -39,8 +32,6 @@ class ParsedResult:
     total:   int
     reading: int
     writing: int
-
-
 
 @dataclass
 class ParsedLine:
@@ -57,7 +48,7 @@ def setup(build_path: str = "build", data_path: str = "data") -> str:
 
     Args:
         build_path: Path to the build directory.
-
+        data_path: Path to the results data directory
     Returns:
         Original project path before changing to build directory.
     """
@@ -84,6 +75,7 @@ def cleanup(project_path: str, build_path: str, data_path: str) -> None:
     Args:
         project_path: Original project path to return to.
         build_path: Path to the build directory to remove.
+        data_path: Path to the results data directory to remove.
     """
     logging.info("Cleaning up")
     os.chdir(project_path)
@@ -192,7 +184,7 @@ def parse_line(line: str) -> ParsedLine | None:
     Args:
         line: line of file
     Returns:
-
+        ParseLine structure
     """
     match = re.match(r"(.+)=(-?\d+\.\d+)/(-?\d+\.\d+)/(-?\d+\.\d+)", line.strip())
     if match:
@@ -257,9 +249,10 @@ def compare_files(file_name1: str, file_name2: str, epsilon: float = 0.1, log: b
     return True
 
 def python_script() -> str:
-    """
+    """Creates python tempfile
+
     Returns:
-        Python script.
+        name of python file
     """
     script_content = """\
 import time
@@ -367,6 +360,7 @@ def get_random_unicode(length) -> str:
     Returns:
         string of unicode characters
     """
+    # the characters are all characters that occur in the large archieve
     alphabet = " '()-/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÅÇÉÍÑÓÖÜßàáâãäåæçèéêëìíîïðñòóôõöøúûüýĀāăąćČčďĐēėęěğĠġħĩĪīĭİıļĽľŁłńňŌōŏőřŚŞşŠšŢţťūŭųźŻżŽžƏơə̧̃̄̇ḐḑḥḨḩẕẖạẤầếệỉịốồộủừửựỹ‘’"
     return ''.join(random.choice(alphabet) for _ in range(length))
 
@@ -392,6 +386,7 @@ def test_format(results: list[Result], tasks: list[Task]) -> bool:
     Checks if the file parses correctly
 
     :param result: result of cpp run
+    :param tasls: tasks that were run to obtain results in the same order as results
     :return: True if everything is correct
     """
     parsed = [parse_result(res) for res in results]
@@ -413,6 +408,7 @@ def test_result(results: list[Result], tasks: list[Task], data_path: str) -> boo
     runs python to get correct file and compares with it
 
     :param result: result of cpp run
+    :param tasls: tasks that were run to obtain results in the same order as results
     :return: True if everything is correct
     """
     for result, task in zip(results, tasks):
@@ -433,6 +429,7 @@ def test_speed(results: list[Result], tasks: list[Task], data_path) -> bool:
     compares time of cpp file with python
 
     :param result: result of cpp run
+    :param tasls: tasks that were run to obtain results in the same order as results
     :return: True if everything is correct
     """
     for result, task in zip(results, tasks):
@@ -459,6 +456,7 @@ def test_consistency(results: list[ParsedResult], tasks: list[Task]) -> bool:
     checks if all results return same files
 
     :param results: list of results to compare
+    :param tasls: tasks that were run to obtain results in the same order as results
     :return: True if all outfiles are the same
     """
     for i, task in enumerate(tasks[1:]):
@@ -481,6 +479,7 @@ def main(
 
     Args:
         project_path: Path to the project root directory.
+        data_path: Path to the results data directory.
         binary_name: Name of the compiled binary to test.
         consistency_check: Whether to perform consistency checks.
         speed_check: Whether to perform speed checks.
@@ -595,13 +594,13 @@ if __name__ == "__main__":
         "-C",
         "--consistency",
         action="store_true",
-        help="Whether to check for consistent result values on several attempts. Only available for parallel, queue and tpool lab types",
+        help="Whether to check for consistent result values on several attempts",
     )
     parser.add_argument(
         "-s",
         "--speed",
         action="store_true",
-        help="Whether to check if 1 thread is slower than several threads. Only available for parallel, queue and tpool lab types",
+        help="Whether to check if 1 thread is slower than several threads",
     )
     parser.add_argument(
         "-l",
