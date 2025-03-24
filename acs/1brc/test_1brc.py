@@ -484,26 +484,27 @@ def main(
         consistency_check: Whether to perform consistency checks.
         speed_check: Whether to perform speed checks.
     """
-
+    file_map = {}
 
     if not build(project_path):
         logging.error("Build failed")
         return
 
-    short = generate_weather_data(100, 5)
-    long = generate_weather_data(int(1e6), int(1e2))
+    file_map["short"]=generate_weather_data(100, 5)
+    file_map["long"]=generate_weather_data(int(1e6), int(1e2))
+
     if consistency_check:
-        one_station = generate_weather_data(int(1e3), 1)
+        file_map["one_station"] = generate_weather_data(int(1e3), 1)
 
     tasks = [
         Task(
-            short,
+            file_map["short"],
             os.path.join(data_path, "short_single_thread.out"),
             threads = 1,
             name="short_single_thread"
         ),
         Task(
-            long,
+            file_map["long"],
             os.path.join(data_path, "long_multi_thread.out"),
             threads = multiprocessing.cpu_count(),
             name = "long_multi_thread"
@@ -541,7 +542,7 @@ def main(
 
             primes = [2, 7, 13, 17, 29]
 
-            consist_tasks = [Task(one_station,
+            consist_tasks = [Task(file_map["one_station"],
                                   os.path.join(data_path, f"one_station_{t}.out"),
                                   threads=t,
                                   name=f"consistency_check_{t}") for t in primes]
@@ -554,7 +555,8 @@ def main(
 
         logging.info("All tests passed")
     finally:
-        for t_file in [short, long, one_station]:
+
+        for _key, t_file in file_map.items():
             try:
                 os.remove(t_file)
             except OSError as e:
