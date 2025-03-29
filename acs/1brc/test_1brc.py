@@ -215,9 +215,9 @@ def compare_files(file_name1: str, file_name2: str, epsilon: float = 0.1, log: b
 
             if not parsed1 or not parsed2:
                 if log:
-                    logging.error(f"Invalid format in one of the files: {line1.strip()} | {line2.strip()}")
+                    logging.error(f"Invalid format in one of the files: \"{line1.strip()}\" | \"{line2.strip()}\"")
                 else:
-                    print(f"Invalid format in one of the files: {line1.strip()} | {line2.strip()}")
+                    print(f"Invalid format in one of the files: \"{line1.strip()}\" | \"{line2.strip()}\"")
                 return False
 
             res1 = parsed1
@@ -225,9 +225,9 @@ def compare_files(file_name1: str, file_name2: str, epsilon: float = 0.1, log: b
 
             if res1.station != res2.station:
                 if log:
-                    logging.error(f"Station name mismatch: {res1.station} vs {res2.station}")
+                    logging.error(f"Station name mismatch: \"{res1.station}\" vs \"{res2.station}\"")
                 else:
-                    print(f"Station name mismatch in line {i}: {res1.station} vs {res2.station}")
+                    print(f"Station name mismatch in files {file_name1}, {file_name2} in line {i}: \"{res1.station}\" vs \"{res2.station}\"")
                 return False
 
             if not (isclose(res1.min, res2.min, epsilon) and
