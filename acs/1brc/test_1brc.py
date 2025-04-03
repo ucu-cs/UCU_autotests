@@ -347,7 +347,7 @@ def generate_weather_data(size: int, stations: int) -> str:
         for _ in range(size):
             station = random.choice(station_names)
             temperature = random.choice(temperatures)
-            temp_file.write(f"{station};{temperature}\n")
+            temp_file.write(f"{station.strip()};{temperature}\n")
 
     return temp_file.name
 
