@@ -8,8 +8,9 @@ import shutil
 import logging
 from dataclasses import dataclass
 import tempfile
-from typing import override
 import zipfile
+
+# from typing import override # because old python
 
 
 @dataclass
@@ -30,17 +31,20 @@ class Test:
     expected_a: list[tuple[str, int]]
     expected_n: list[tuple[str, int]]
 
-    @override
+    # @override
     def __str__(self) -> str:
         return f"""# Test #{self.number}
 ## Config:
 {self.get_config()}"""
 
     def get_config(self) -> str:
+        extensions = "\n".join(
+            f"indexing_extensions = {extension}" for extension in self.extensions
+        )
         return f"""indir="{self.temp_names.directory}"
 out_by_a="{self.temp_names.out_by_a}"
 out_by_n="{self.temp_names.out_by_n}"
-{"\n".join(f"indexing_extensions = {extension}" for extension in self.extensions)}
+{extensions}
 archives_extensions = .zip
 max_file_size = {self.max_file_size}"""
 
@@ -418,8 +422,8 @@ TESTS = [
         [".txt", ".md"],
         10000000,
         TempNames("", "", "", ""),
-        [('ack', 1), ('syn', 1), ('yay', 3)],
-        [('yay', 3), ('ack', 1), ('syn', 1)],
+        [("ack", 1), ("syn", 1), ("yay", 3)],
+        [("yay", 3), ("ack", 1), ("syn", 1)],
     ),
 ]
 
