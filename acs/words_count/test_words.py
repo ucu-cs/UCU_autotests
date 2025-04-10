@@ -233,7 +233,7 @@ def print_tests_info(project_path: str, tests: list[Test]) -> None:
             test.base64_contents,
             path,
         )
-        test.temp_names = TempNames(path, "", "", "")
+        test.temp_names.directory = path
         print(test)
 
 
