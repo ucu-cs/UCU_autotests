@@ -375,7 +375,7 @@ def test_speed(results: list[Result]) -> bool:
             logging.error(f"Wrong format: {result}")
             return False
 
-    if times[0] < times[1]:
+    if times[0] <= times[1]:
         logging.error(f"Single thread result is faster than multithread:")
         logging.error(f"Single thread result: {results[0].name}\n\t time: {times[0]}")
         logging.error(f"Single thread result: {results[1].name}\n\t time: {times[1]}")
@@ -457,7 +457,7 @@ def main(
     if speed_test:
         logging.info("=============================")
         logging.info("Testing the speed of results")
-        if not test_speed([results[1], parallel_tests[0]]):
+        if not test_speed([results[1], parallel_results[0]]):
             logging.error("Speed tests failed")
             return
 
