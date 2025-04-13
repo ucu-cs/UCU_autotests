@@ -384,7 +384,7 @@ def test_speed(results: list[Result]) -> bool:
 
 def test_consistency(results: list[Result], tests: list[Test]):
     fst_result_list = get_result_from_file(tests[0].temp_names.out_by_a)
-    for result, test in zip(results, tests)[1:]:
+    for result, test in zip(results[1:], tests[1:]):
         nth_result_list = get_result_from_file(test.temp_names.out_by_a)
 
         if fst_result_list != nth_result_list:
