@@ -274,21 +274,43 @@ def test_stdout_format(results: list[Result]) -> bool:
             correct_format = False
             continue
         lines = [i for i in result.stdout.split("\n") if i.strip()]
-        if len(lines) != 2:
-            logging.error(f"Did not get 2 lines in stdout: {result}")
-            correct_format = False
-            continue
-        if not lines[0].startswith("Total=") or not lines[1].startswith("Writing="):
-            logging.error(f"Did not get the correct keys in stdout: {result}")
-            correct_format = False
-            continue
-        try:
-            int(lines[0].split("=")[1])
-            int(lines[1].split("=")[1])
-        except ValueError:
-            logging.error(f"Did not get integer values in stdout: {result}")
-            correct_format = False
-            continue
+        if LAB_TYPE == "serial":
+            if len(lines) != 2:
+                logging.error(f"Did not get 2 lines in stdout: {result}")
+                correct_format = False
+                continue
+            if not lines[0].startswith("Total=") or not lines[1].startswith("Writing="):
+                logging.error(f"Did not get the correct keys in stdout: {result}")
+                correct_format = False
+                continue
+            try:
+                int(lines[0].split("=")[1])
+                int(lines[1].split("=")[1])
+            except ValueError:
+                logging.error(f"Did not get integer values in stdout: {result}")
+                correct_format = False
+                continue
+        else:
+            if len(lines) != 4:
+                logging.error(f"Did not get 4 lines in stdout: {result}")
+                correct_format = False
+                continue
+            if (not lines[0].startswith("Total=") or
+                not lines[1].startswith("Finding=") or
+                not lines[2].startswith("Reading=") or
+                not lines[3].startswith("Writing=")):
+                logging.error(f"Did not get the correct keys in stdout: {result}")
+                correct_format = False
+                continue
+            try:
+                int(lines[0].split("=")[1])
+                int(lines[1].split("=")[1])
+                int(lines[2].split("=")[1])
+                int(lines[3].split("=")[1])
+            except ValueError:
+                logging.error(f"Did not get integer values in stdout: {result}")
+                correct_format = False
+                continue
     return correct_format
 
 
@@ -346,7 +368,7 @@ def test_correctness(results: list[Result], tests: list[Test]) -> bool:
 def test_speed(results: list[Result]) -> bool:
     times = []
     for result in results:
-        match = re.search(r"Total=(\d+)\nWriting=(\d+)", result.stdout)
+        match = re.search(r"Total=(\d+)\nFinding=(\d+)\nReading=(\d+)\nWriting=(\d+)", result.stdout)
         if match:
             times.append(int(match.group(1)))
         else:
