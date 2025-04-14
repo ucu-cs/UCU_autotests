@@ -8,4 +8,5 @@ filename = args.filename
 
 with open(filename, "rb") as zip_file:
     encoded_zip = base64.b64encode(zip_file.read()).decode("utf-8")
-    print(encoded_zip)
+    with open("out.py", "w") as out_file:
+        out_file.write(encoded_zip)
