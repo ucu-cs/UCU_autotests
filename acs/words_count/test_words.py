@@ -426,6 +426,8 @@ def main(
         logging.info("=============================")
         logging.info("Printing tests info")
         print_tests_info(project_path, tests)
+        if (parallel_tests is not None) and (consistency_test or speed_test):
+            print_tests_info(project_path, parallel_tests)
         return
 
     if not build(project_path):
@@ -633,7 +635,7 @@ if __name__ == "__main__":
         if sys.platform == "win32":
             binary_name += ".exe"
 
-    for test in TESTS:
+    for test in TESTS + PARALLEL_TESTS:
         test.lab_type = lab_type
 
     @dataclass
