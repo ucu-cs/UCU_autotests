@@ -312,6 +312,8 @@ def test_stdout_format(results: list[Result], lab_type: str) -> bool:
                 continue
     return correct_format
 
+def test_stderr_format(results: list[Result]) -> bool:
+    return all(result.stderr == "" for result in results)
 
 def test_file_format(tests: list[Test]) -> bool:
     correct_format = True
@@ -447,9 +449,12 @@ def main(
     logging.info("=============================")
     logging.info("Running tests")
     logging.info("=============================")
-    logging.info("Testing the format of stdout")
+    logging.info("Testing the format of output")
     if not test_stdout_format(results, lab_type):
         logging.error("Stdout format tests failed")
+        return
+    if not test_stderr_format(results):
+        logging.error("Stderr format tests failed")
         return
     logging.info("=============================")
     logging.info("Testing the format of output files")
