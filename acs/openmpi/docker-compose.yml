@@ -1,0 +1,46 @@
+services:
+  mpi-worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: mpi-worker1
+    container_name: mpi-worker1
+    volumes:
+      - ./app:/app
+      - ./container_scripts:/ssh
+      - ./config_files/:/config_files
+    networks:
+      - mpi_network
+    entrypoint: /ssh/entrypoint_worker.sh
+
+  mpi-worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: mpi-worker2
+    container_name: mpi-worker2
+    volumes:
+      - ./app:/app
+      - ./container_scripts:/ssh
+      - ./config_files/:/config_files
+    networks:
+      - mpi_network
+    entrypoint: /ssh/entrypoint_worker.sh
+
+  mpi-master:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: mpi-master
+    container_name: mpi-master
+    volumes:
+      - ./app:/app
+      - ./container_scripts:/ssh
+      - ./config_files/:/config_files
+    networks:
+      - mpi_network
+    entrypoint: /ssh/entrypoint_master.sh
+
+networks:
+  mpi_network:
+    driver: bridge
