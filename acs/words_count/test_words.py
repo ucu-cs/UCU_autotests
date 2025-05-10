@@ -616,7 +616,7 @@ if __name__ == "__main__":
         "lab_type",
         help="Type of lab to test",
         type=str,
-        choices=["serial", "parallel", "tbb", "tools"],
+        choices=["serial", "parallel", "tools", "tbb"],
     )
 
     args = parser.parse_args()
