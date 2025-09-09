@@ -79,7 +79,8 @@ test_width() {
   clear_files
 }
 
-test_path_set() {
+#an instance of the test with short arguments
+test_path_set_short() {
   prepare
   if ! ./"$EXEC" -p "$FILE_PATH" dog.png -w 150 -t "$PWD" >& /dev/null; then
     >&2 echo "ERROR Program exited with error code $?. Exiting the test..."
@@ -97,6 +98,25 @@ test_path_set() {
   clear_files
 }
 
+#an instance of the test with long arguments
+#let's have two to troubleshoot things quicker
+test_path_set_long() {
+  prepare
+  if ! ./"$EXEC" --path="$FILE_PATH" dog.png --width=150 --dest="$PWD" >& /dev/null; then
+    >&2 echo "ERROR Program exited with error code $?. Exiting the test..."
+    ((FAILED++))
+    return
+  fi
+  echo "$EXEC -p $FILE_PATH dog.png -w 150 -t $PWD executed successfully"
+  if [[ "$(find "$PWD" -name "dog-150-*.png")" != "" && "$(find "$PWD" -name "cat-*.jpg")" == "" ]]; then
+    echo "SUCCESS: files not specified were not resized"
+    ((SUCCESS++))
+  else
+    >&2 echo "ERROR: files not specified in command line were converted"
+    ((FAILED++))
+  fi
+  clear_files
+}
 
 
 if [[ "$(find . -name "$EXEC" )" == "" ]]; then
@@ -108,6 +128,7 @@ else
   echo "Testing width parameters..."
   test_width
   echo "Testing files selection..."
-  test_path_set
+  test_path_set_short
+  test_path_set_long
   echo "Tests are completed: Passed: $SUCCESS, failed: $FAILED"
 fi
