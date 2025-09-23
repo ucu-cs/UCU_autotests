@@ -77,7 +77,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 echo "Base check -- 3, relative path"
-mkdir t -p
+mkdir -p t
 cd t
 ${MYCAT} ../$SINGLE_FILE >  ../out_$SINGLE_FILE 2>>../$ERRORS_FILE
 if [[ $? -ne 0 ]]; then
@@ -97,7 +97,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 cd $CURRENT_PATH 
-rm ./t -r
+rm -r ./t
 
 echo "Base check -- 4, -A"
 ${MYCAT} -A $SINGLE_FILE >  out_$SINGLE_FILE 2>>$ERRORS_FILE
@@ -163,7 +163,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 echo "Two files -- 3, -A"
-${MYCAT} $FILE_LIST1 -A > out_test2.txt 2>>$ERRORS_FILE
+${MYCAT} -A $FILE_LIST1  > out_test2.txt 2>>$ERRORS_FILE
 if [[ $? -ne 0 ]]; then
 	echo "Failed two files 3 check "
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -226,7 +226,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 echo "Five files -- 3, -A"
-${MYCAT} $FILE_LIST2 -A > out_test5.txt 2>>$ERRORS_FILE
+${MYCAT} -A $FILE_LIST2 > out_test5.txt 2>>$ERRORS_FILE
 if [[ $? -ne 0 ]]; then
 	echo "Failed five files 3 check"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
