@@ -1,3 +1,3 @@
 [submodule "cpp_string_autotests"]
-	path = cpp_string_autotests
+	path = poc/cpp_string_autotests
 	url = https://github.com/ucu-cs/cpp_string_autotests
