@@ -7,24 +7,24 @@
 RUNNER= 
 EXIT_ON_FIRST_ERROR=
 TEST_ON_LARGE_FILES=
+TEST_MMAP=
 
 # valgrind prints to stderr, so see ERRORS_FILE 
 # (mycat_errors.txt by default)
 
-while getopts "v:le" opt; do
+while getopts "v:lem" opt; do
     case "${opt}" in
         v)  RUNNER=${OPTARG};;
 		e)  EXIT_ON_FIRST_ERROR="true";;
 		l)  TEST_ON_LARGE_FILES="true";;
+		m)  TEST_MMAP="true";;
 		*)  echo "Wrong option";
 			exit 111;;
     esac
 done 
 
-MYCAT="${RUNNER} mycat"
-
 CURRENT_PATH=`pwd`
-PATH=$PATH:$CURRENT_PATH 
+PATH=$CURRENT_PATH:$PATH 
 ERRORS_FILE=mycat_errors.txt
 EXPECTED_ERRORS_FILE=mycat_expected_errors.txt
 SINGLE_FILE=books1-10.txt
@@ -36,11 +36,28 @@ FILE_LIST2a="book1.txt -A book2.txt book3.txt book4.txt book5.txt"
 FILE_LIST2b="book1.txt book2.txt -A book3.txt book4.txt book5.txt"
 FILE_LIST2c="book1.txt book2.txt book3.txt -A book4.txt book5.txt"
 FILE_LIST2_HEX="hexified_book1.txt hexified_book2.txt hexified_book3.txt hexified_book4.txt hexified_book5.txt"
-FILE_EXREALARGE_ROUGHLY_1GB="extra_large_0.txt"
-FILE_EXREALARGE_LESS_2GB="extra_large_1.txt"
-FILE_EXREALARGE_MORE_4GB="extra_large_2.txt"
+FILE_EXTRALARGE_ROUGHLY_1GB="extra_large_0.txt"
+FILE_EXTRALARGE_LESS_2GB="extra_large_1.txt"
+FILE_EXTRALARGE_MORE_4GB="extra_large_2.txt"
+MMAP_OUTPUT_FILE="$CURRENT_PATH/mmap_test_output.txt"
+
+MYCAT="${RUNNER} mycat"
+
+if [[ "$TEST_MMAP" == "true" ]];then
+	MYCAT="${RUNNER} mycat2 -o $MMAP_OUTPUT_FILE" #enables the testing of mmio mycat. 
+	#Note that the file is not cleared before individual runs. That's to test whether the implementations truncate the file prior to mapping and writing to it.
+fi
 
 rm -f $ERRORS_FILE $EXPECTED_ERRORS_FILE
+
+
+#================================================
+
+if [[ "$TEST_MMAP" == "true" ]]; then #chooses what file to check as the output of mycat
+	SINGLE_TEST_OUTPUT="$MMAP_OUTPUT_FILE"
+else
+	SINGLE_TEST_OUTPUT="out_$SINGLE_FILE"
+fi
 
 echo "Base check -- 1"
 ${MYCAT} $SINGLE_FILE > out_$SINGLE_FILE 2>>$ERRORS_FILE
@@ -51,7 +68,7 @@ if [[ $? -ne 0 ]]; then
 	fi
 fi
 
-diff $SINGLE_FILE out_$SINGLE_FILE >> $ERRORS_FILE 2>&1
+diff $SINGLE_FILE $SINGLE_TEST_OUTPUT >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of base test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -68,7 +85,7 @@ if [[ $? -ne 0 ]]; then
 	fi
 fi
 
-diff $CURRENT_PATH/$SINGLE_FILE $CURRENT_PATH/out_$SINGLE_FILE >> $CURRENT_PATH/$ERRORS_FILE 2>&1
+diff $CURRENT_PATH/$SINGLE_FILE $CURRENT_PATH/$(basename $SINGLE_TEST_OUTPUT) >> $CURRENT_PATH/$ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of base test 2"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -88,7 +105,7 @@ if [[ $? -ne 0 ]]; then
 
 fi
 
-diff  ../$SINGLE_FILE  ../out_$SINGLE_FILE >>../$ERRORS_FILE 2>&1
+diff  ../$SINGLE_FILE  ../$(basename $SINGLE_TEST_OUTPUT) >>../$ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of base test 3"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -109,7 +126,7 @@ if [[ $? -ne 0 ]]; then
 
 fi
 
-diff  $SINGLE_FILE_HEX out_$SINGLE_FILE >>$ERRORS_FILE 2>&1
+diff  $SINGLE_FILE_HEX $SINGLE_TEST_OUTPUT >>$ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of base test 4"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -120,6 +137,13 @@ fi
 
 
 #=================================================
+
+if [[ "$TEST_MMAP" == "true" ]]; then #chooses what file to check as the output of mycat
+	DOUBLE_TEST_OUTPUT="$MMAP_OUTPUT_FILE"
+else
+	DOUBLE_TEST_OUTPUT="out_test2.txt"
+fi
+
 echo "Two files -- 1"
 ${MYCAT} $FILE_LIST1 > out_test2.txt 2>>$ERRORS_FILE
 if [[ $? -ne 0 ]]; then
@@ -132,7 +156,7 @@ fi
 
 cat $FILE_LIST1 > etalon_test2.txt 
 
-diff out_test2.txt etalon_test2.txt >> $ERRORS_FILE 2>&1
+diff $DOUBLE_TEST_OUTPUT etalon_test2.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of two files 1 test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -153,7 +177,7 @@ fi
 
 cat $FILE_LIST1_HEX > etalon_test2.txt 
 
-diff out_test2.txt etalon_test2.txt >> $ERRORS_FILE 2>&1
+diff $DOUBLE_TEST_OUTPUT etalon_test2.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of two files 2 test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -174,7 +198,7 @@ fi
 
 cat $FILE_LIST1_HEX > etalon_test2.txt 
 
-diff out_test2.txt etalon_test2.txt >> $ERRORS_FILE 2>&1
+diff $DOUBLE_TEST_OUTPUT etalon_test2.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of two files 3 test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -183,6 +207,12 @@ if [[ $? -ne 0 ]]; then
 
 fi
 #=================================================
+if [[ "$TEST_MMAP" == "true" ]]; then #chooses what file to check as the output of mycat
+	PENTA_TEST_OUTPUT="$MMAP_OUTPUT_FILE"
+else
+	PENTA_TEST_OUTPUT="out_test5.txt"
+fi
+
 echo "Five files -- 1"
 ${MYCAT} $FILE_LIST2 > out_test5.txt 2>>$ERRORS_FILE
 if [[ $? -ne 0 ]]; then
@@ -190,12 +220,11 @@ if [[ $? -ne 0 ]]; then
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
 		exit 1
 	fi
-
 fi
 
 cat $FILE_LIST2 > etalon_test5.txt 
 
-diff out_test5.txt etalon_test5.txt >> $ERRORS_FILE 2>&1
+diff $PENTA_TEST_OUTPUT etalon_test5.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of five files 1 test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -216,7 +245,7 @@ fi
 
 cat $FILE_LIST2_HEX > etalon_test5.txt 
 
-diff out_test5.txt etalon_test5.txt >> $ERRORS_FILE 2>&1
+diff $PENTA_TEST_OUTPUT etalon_test5.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of five files 2 test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -235,7 +264,7 @@ if [[ $? -ne 0 ]]; then
 
 fi
 
-diff out_test5.txt etalon_test5.txt >> $ERRORS_FILE 2>&1
+diff $PENTA_TEST_OUTPUT etalon_test5.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of five files 3 test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -254,7 +283,7 @@ if [[ $? -ne 0 ]]; then
 
 fi
 
-diff out_test5.txt etalon_test5.txt >> $ERRORS_FILE 2>&1
+diff $PENTA_TEST_OUTPUT etalon_test5.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of five files 4a test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -272,7 +301,7 @@ if [[ $? -ne 0 ]]; then
 
 fi
 
-diff out_test5.txt etalon_test5.txt >> $ERRORS_FILE 2>&1
+diff $PENTA_TEST_OUTPUT etalon_test5.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of five files 4b test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -290,7 +319,7 @@ if [[ $? -ne 0 ]]; then
 
 fi
 
-diff out_test5.txt etalon_test5.txt >> $ERRORS_FILE 2>&1
+diff $PENTA_TEST_OUTPUT etalon_test5.txt >> $ERRORS_FILE 2>&1
 if [[ $? -ne 0 ]]; then
 	echo "Wrong result of five files 4c test"
 	if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -304,7 +333,7 @@ if [ "$TEST_ON_LARGE_FILES" = "true" ]; then
 	echo "Checking on extra-large files."
 
 	echo "Running time for ~1Gb file."
-	( time ${MYCAT} $FILE_EXREALARGE_ROUGHLY_1GB > out_$SINGLE_FILE 2>>$ERRORS_FILE ) 2> stats_own.txt
+	( time ${MYCAT} $FILE_EXTRALARGE_ROUGHLY_1GB > out_$SINGLE_FILE 2>>$ERRORS_FILE ) 2> stats_own.txt
 	if [[ $? -ne 0 ]]; then
 		echo "Failed extra-large file (~1Gb) check"
 		if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -313,7 +342,7 @@ if [ "$TEST_ON_LARGE_FILES" = "true" ]; then
 	fi
 	echo "\tComparing runtime..."
 
-	( time cat $FILE_EXREALARGE_ROUGHLY_1GB > out_$SINGLE_FILE 2>>$ERRORS_FILE ) 2> stats_sys.txt
+	( time cat $FILE_EXTRALARGE_ROUGHLY_1GB > out_$SINGLE_FILE 2>>$ERRORS_FILE ) 2> stats_sys.txt
 
 	own_time_str=$(cat stats_own.txt | grep -e "real" | sed -E 's/real[[:space:]]*([0-9]+)m([0-9]+),([0-9]+)s/\1 \2 \3/')
 	read mins secs millis <<< "$own_time_str"
@@ -332,8 +361,14 @@ if [ "$TEST_ON_LARGE_FILES" = "true" ]; then
 		fi
 	fi
 
+	if [[ "$TEST_MMAP" == "true" ]]; then #chooses what file to check as the output of large mycat
+		LARGE_TEST_OUTPUT="$MMAP_OUTPUT_FILE"
+	else
+		LARGE_TEST_OUTPUT="out_$SINGLE_FILE"
+	fi
+
 	echo "Less than 2Gb."
-	${MYCAT} $FILE_EXREALARGE_LESS_2GB > out_$SINGLE_FILE 2>>$ERRORS_FILE
+	${MYCAT} $FILE_EXTRALARGE_LESS_2GB > out_$SINGLE_FILE 2>>$ERRORS_FILE
 	if [[ $? -ne 0 ]]; then
 		echo "Failed extra-large file (<2Gb) check"
 		if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -341,7 +376,7 @@ if [ "$TEST_ON_LARGE_FILES" = "true" ]; then
 		fi
 	fi
 	echo "\tComparing"
-	diff $FILE_EXREALARGE_LESS_2GB out_$SINGLE_FILE >> $ERRORS_FILE 2>&1
+	diff $FILE_EXTRALARGE_LESS_2GB $LARGE_TEST_OUTPUT >> $ERRORS_FILE 2>&1
 	if [[ $? -ne 0 ]]; then
 		echo "Wrong result of extra-large file (<2Gb) test"
 		if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -351,7 +386,7 @@ if [ "$TEST_ON_LARGE_FILES" = "true" ]; then
 	rm out_$SINGLE_FILE
 	
 	echo "More than 4Gb."
-	${MYCAT} $FILE_EXREALARGE_MORE_4GB > out_$SINGLE_FILE 2>>$ERRORS_FILE
+	${MYCAT} $FILE_EXTRALARGE_MORE_4GB > out_$SINGLE_FILE 2>>$ERRORS_FILE
 	if [[ $? -ne 0 ]]; then
 		echo "Failed extra-large file (>4Gb) check"
 		if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
@@ -359,7 +394,7 @@ if [ "$TEST_ON_LARGE_FILES" = "true" ]; then
 		fi
 	fi
 	echo "\tComparing"
-	diff $FILE_EXREALARGE_MORE_4GB out_$SINGLE_FILE >> $ERRORS_FILE 2>&1
+	diff $FILE_EXTRALARGE_MORE_4GB $LARGE_TEST_OUTPUT >> $ERRORS_FILE 2>&1
 	if [[ $? -ne 0 ]]; then
 		echo "Wrong result of extra-large file (>4Gb) test"
 		if [ "$EXIT_ON_FIRST_ERROR" = "true" ]; then
