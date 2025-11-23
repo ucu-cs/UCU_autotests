@@ -18,7 +18,7 @@ In order to do all this, a `makefile` in root directory is provided.
 
 The build process consists of three steps
 
-1. Assemble source code for `func.o` into an object file in an external directory specified in `FUNC_PATH`. This relies on the `makefule` in external directory
+1. Assemble source code for `func.o` into an object file in an external directory specified in `FUNC_PATH`. This relies on the `makefile` in external directory
 2. Symlink this object file into a local `obj` dir, which itself is in `TEST_DIR`
 3. Compile the test program in `TEST_DIR` into a binary and link it with the object file `func.o`
 
