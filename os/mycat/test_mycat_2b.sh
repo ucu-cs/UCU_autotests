@@ -94,7 +94,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 echo "Base check -- 3, relative path"
-mkdir t -p
+mkdir -p t
 cd t
 ${MYCAT} ../$SINGLE_FILE >  ../out_$SINGLE_FILE 2>>../$ERRORS_FILE
 if [[ $? -ne 0 ]]; then
@@ -114,7 +114,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 cd $CURRENT_PATH 
-rm ./t -r
+rm -r ./t
 
 echo "Base check -- 4, -A"
 ${MYCAT} -A $SINGLE_FILE >  out_$SINGLE_FILE 2>>$ERRORS_FILE
