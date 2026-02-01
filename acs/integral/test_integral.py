@@ -58,6 +58,7 @@ class Result:
     name: str
     stdout: str | None
     stderr: str | None
+    return_code: int | None
 
 
 functions = [
@@ -95,6 +96,63 @@ init_steps_x = 100
 init_steps_y = 100
 max_iter=10""",
 ]
+
+incorrect_configs = [
+# wrong argument names
+"""abs_err =0.0005
+rel_err = 0.000009
+x_begin=-50
+x_end=50
+y_start=-50
+y_finish=50
+
+init_steps_x = 100
+init_steps_y =100
+max_iter= 30""",
+
+# missing arguments
+"""abs_err=0.0005
+rel_err = 0.000009
+x_begin =-50
+y_start= -50
+y_finish=50
+init_steps_x = 100
+max_iter=30""",
+
+# broken formatting
+"""abs_err=0.0005
+rel_err = 0.000 009
+x_start =-5 0
+x_end=50
+y_start=- 50
+y_end=50
+init_steps_x = 1 0 0
+init_steps_y = 100
+max_iter=30""",
+]
+
+#totally valid config, just 1 step + coarse-sized cells + strict accuracy thresholds
+unreal_precision_config = """
+abs_err = 0.0001
+rel_err = 0.000005
+x_start = -50
+x_end = 50
+y_start = -50
+y_end = 50
+init_steps_x = 10
+init_steps_y = 10
+max_iter = 1"""
+
+error_code_mapping = {
+    0: "Successful execution",
+    1: "Wrong number of arguments",
+    2: "Wrong function number",
+    3: "Failed to access integration config file",
+    5: "Failed to parse integration config file",
+    16: "Failed to achieve the desired accuracy",
+}
+
+_temp_files = []
 
 
 def setup(build_path: str = "build") -> str:
@@ -159,29 +217,50 @@ def run(command: Command, func: Function | None = None) -> Result:
         )
     except subprocess.CalledProcessError:
         logging.error(f"Failed to execute {command}")
-        return Result(name, None, None)
+        return Result(name, None, None, None)
     except subprocess.TimeoutExpired:
         logging.error(f"Timed out during execution of {command}")
-        return Result(name, None, None)
-    return Result(name, process.stdout, process.stderr)
+        return Result(name, None, None, None)
+
+    return Result(name, process.stdout, process.stderr, process.returncode)
 
 
-def build(project_path: str) -> bool:
+def build(project_path: str, compiler_options: str) -> bool:
     """Builds the project using cmake.
 
     Args:
         project_path: Path to the project root directory.
+        compiler_options: Compiler options.
 
     Returns:
         True if the build was successful, False otherwise.
     """
     logging.info("Building project: " + project_path)
 
-    return (
-        run(Command(["cmake", "-DCMAKE_BUILD_TYPE=Release", project_path])).stdout
-        is not None
-        and run(Command(["cmake", "--build", "."])).stdout is not None
+    configure_out = run(
+        Command(
+            [
+                "cmake",
+                "-DCMAKE_BUILD_TYPE=Release",
+                f"-DCMAKE_CXX_FLAGS={compiler_options}",
+                project_path,
+            ]
+        )
     )
+
+    if configure_out.return_code != 0:
+        logging.error(configure_out.stdout)
+        logging.error(configure_out.stderr)
+        return False
+
+    build_out = run(Command(["cmake", "--build", "."]))
+
+    if build_out.return_code != 0:
+        logging.error(build_out.stdout)
+        logging.error(build_out.stderr)
+        return False
+
+    return True
 
 
 def get_results(
@@ -200,11 +279,9 @@ def get_results(
     return [
         run(
             Command(
-                [
-                    f"./{binary_name}",
-                    str(func.number),
-                    os.path.join(project_path, func.config),
-                ]
+                [f"./{binary_name}"]
+                + ([str(func.number)] if func.number else [])
+                + ([os.path.join(project_path, func.config)] if func.config else [])
                 + (
                     [
                         str(func.threads),
@@ -312,6 +389,41 @@ def test_result(results: list[Result]) -> bool:
                 f"\nWrong result: {lines[0]} != {functions[i].result} (+-{functions[i].epsilon})\n{result=}\n"
             )
             success = False
+        if result.return_code != 0:
+            logging.error(
+                "Despite outputting computation results, the function has finished with non-zero code.\nThis is not expected."
+            )
+            success = False
+    return success
+
+
+def test_exit_codes(results: list[Result], expected_codes: list[int]) -> bool:
+    """Tests if the program exits with correct codes (as defined by the lab guidelines as of 2026).
+
+    Args:
+        results: List of Result objects to check.
+        expected_codes: List of expected exit codes
+
+    Returns:
+        True if all exit codes match, False otherwise.
+    """
+
+    success = True
+    for i, result in enumerate(results):
+        if result.stdout is None:
+            logging.error("Found None result")
+            return False
+        actual_code = result.return_code
+        exp_code = expected_codes[i]
+        if actual_code != exp_code:
+            logging.error(
+                f"The program has exited with a code different from the expected for the test case #{i}.\nExpected: {exp_code} ({error_code_mapping[exp_code]})\n vs\nActual: {actual_code} ({error_code_mapping[actual_code] if actual_code in error_code_mapping.keys() else "Custom code"})\n"
+            )
+            success = False
+            
+        if actual_code not in error_code_mapping.keys() and actual_code < 64:
+            logging.error("Custom exit codes must start from '64'.\n")
+            success = False
     return success
 
 
@@ -364,12 +476,64 @@ def get_next_prime(prev: float = 0) -> float:
     return floor * (prev - floor + 1)
 
 
+def build_exit_code_test_cases(num_threads, chunk_size):
+    test_cases = []
+    expected_codes = []
+
+    correct_config = create_tmp_config_file(configs[0])
+    _temp_files.append(correct_config)
+
+    unreal_config = create_tmp_config_file(unreal_precision_config)
+    _temp_files.append(unreal_config)
+
+    wrong_configs = []
+    for config in incorrect_configs:
+        tmp_config = create_tmp_config_file(config)
+
+        wrong_configs.append(tmp_config.name)
+        _temp_files.append(tmp_config)
+
+    # wrong number of arguments (too few)
+    wna = Function(1, None, 4.54544762 * 10**6, 20, 0, 0, 3600)
+    test_cases.append(wna)
+    expected_codes.append(1)
+
+    # wrong function number
+    wfn = Function(1972, correct_config.name, 4.54544762 * 10**6, 20, 0, 0, 3600)
+    test_cases.append(wfn)
+    expected_codes.append(2)
+
+    # invalid config path
+    icp = Function(1, "/usr/rewrite/in/rust", 4.54544762 * 10**6, 20, 0, 0, 3600)
+    test_cases.append(icp)
+    expected_codes.append(3)
+
+    # config parsing error
+    for test_config in wrong_configs:
+        cpe_template = Function(1, test_config, 4.54544762 * 10**6, 20, 0, 0, 3600)
+        test_cases.append(cpe_template)
+        expected_codes.append(5)
+
+    # precision failure (There is practically no chance you can avoid it)
+    pf = Function(1, unreal_config.name, 4.54544762 * 10**6, 20, 0, 0, 3600)
+    test_cases.append(pf)
+    expected_codes.append(16)
+
+    for test_case in test_cases:
+        test_case.threads = num_threads
+        test_case.chunk_size = chunk_size
+
+    return (test_cases, expected_codes)
+
+
 def main(
     project_path: str,
     binary_name: str,
     consistency_check: bool,
     speed_check: bool,
     print_tests: bool,
+    compiler_options: str,
+    exit_codes_check: bool,
 ):
     """Main function to run all tests.
 
@@ -381,6 +545,8 @@ def main(
         consistency_check: Whether to perform consistency checks.
         speed_check: Whether to perform speed checks.
         print_tests: Whether to print info about tests instead of running them.
+        compiler_options: Options to pass to the compiler.
+        exit_codes_check: Whether to run tests for exit codes.
     """
     consistency_threads = [get_next_prime()]
     for i in range(len(functions)):
@@ -426,7 +592,7 @@ def main(
         logging.info("Finished printing tests")
         return
 
-    if not build(project_path):
+    if not build(project_path, compiler_options):
         logging.error("Build failed")
         return
 
@@ -493,7 +659,31 @@ def main(
             return
         logging.info("Chunk size test passed")
 
+    # exit codes are checked last for at this point we'd like to assume there are no "functional" problems with the program
+    if exit_codes_check:
+        logging.info("=============================")
+        logging.info("Testing the exit codes")
+        exit_code_test_cases, expected_codes = build_exit_code_test_cases(
+            2 if speed_check else None, 3 if chunk_size_check else None
+        )
+        exit_code_results = get_results(project_path, binary_name, exit_code_test_cases)
+        if not test_exit_codes(exit_code_results, expected_codes):
+            logging.error("Exit code tests failed")
+            return
+
     logging.info("All tests passed")
+
+
+def create_tmp_config_file(config):
+    """Creates a temporary file with the contents of the provided config
+    Args:
+        config: The integration config to write into the file.
+    """
+
+    file = tempfile.NamedTemporaryFile("w", delete=False)
+    file.write(config.strip())
+    file.flush()
+    return file
 
 
 if __name__ == "__main__":
@@ -576,6 +766,21 @@ if __name__ == "__main__":
         default=30,
     )
     parser.add_argument(
+        "--compiler_options",
+        help="The options you feed to the compiler can affect the result of your program. This argument is intended for fine-grained testing and development.",
+        type=str,
+        required=False,
+        default="",
+    )
+    parser.add_argument(
+        "-e",
+        "--check_codes",
+        help="Whether to check exit codes. I'd be a pity to have points deduced for incorrect exit codes.",
+        default=True,
+        required=False,
+        action="store_true",
+    )
+    parser.add_argument(
         "lab_type",
         help="Type of lab to test",
         type=str,
@@ -590,8 +795,10 @@ if __name__ == "__main__":
     consistency_check: bool = args.consistency
     speed_check: bool = args.speed
     chunk_size_check: bool = args.chunk_size
+    exit_codes_check: bool = args.check_codes
     lab_type: str = args.lab_type
     logging_level: str = args.logging_level.upper()
+    compiler_options: str = args.compiler_options
     logging.basicConfig(
         level=logging.getLevelName(logging_level), format="%(levelname)s: %(message)s"
     )
@@ -639,14 +846,10 @@ if __name__ == "__main__":
 
     project_path = setup(build_path)
 
-    temp_files = []
     for config in configs:
-        file = tempfile.NamedTemporaryFile("w", delete=False)
-        file.write(config.strip())
-        file.flush()
-        temp_files.append(file)
+        _temp_files.append(create_tmp_config_file(config))
 
-    for func, temp_file in zip(functions, temp_files):
+    for func, temp_file in zip(functions, _temp_files):
         func.config = temp_file.name
         temp_file.close()
 
@@ -657,9 +860,11 @@ if __name__ == "__main__":
             consistency_check,
             speed_check,
             print_tests,
+            compiler_options,
+            exit_codes_check,
         )
     finally:
-        for temp_file in temp_files:
+        for temp_file in _temp_files:
             os.unlink(temp_file.name)
         if clean:
             cleanup(project_path, build_path)
