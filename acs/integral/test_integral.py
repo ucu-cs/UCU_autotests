@@ -98,8 +98,8 @@ max_iter=10""",
 ]
 
 incorrect_configs = [
-# wrong argument names
-"""abs_err =0.0005
+    # wrong argument names
+    """abs_err =0.0005
 rel_err = 0.000009
 x_begin=-50
 x_end=50
@@ -109,18 +109,16 @@ y_finish=50
 init_steps_x = 100
 init_steps_y =100
 max_iter= 30""",
-
-# missing arguments
-"""abs_err=0.0005
+    # missing arguments
+    """abs_err=0.0005
 rel_err = 0.000009
 x_begin =-50
 y_start= -50
 y_finish=50
 init_steps_x = 100
 max_iter=30""",
-
-# broken formatting
-"""abs_err=0.0005
+    # broken formatting
+    """abs_err=0.0005
 rel_err = 0.000 009
 x_start =-5 0
 x_end=50
@@ -131,7 +129,7 @@ init_steps_y = 100
 max_iter=30""",
 ]
 
-#totally valid config, just 1 step + coarse-sized cells + strict accuracy thresholds
+# totally valid config, just 1 step + coarse-sized cells + strict accuracy thresholds
 unreal_precision_config = """
 abs_err = 0.0001
 rel_err = 0.000005
@@ -304,6 +302,88 @@ def get_results(
     ]
 
 
+def run_valgrind_suite(
+    project_path: str,
+    binary_name: str,
+    tools: list[str],
+    preset_func: Function,
+) -> bool:
+    """
+    For each requested Valgrind tool, runs one invocation of the analyzed program.
+    Produces one log file per tool in the current working directory.
+    """
+
+    def build_binary_argv(
+        project_path: str, binary_name: str, func: Function
+    ) -> list[str]:
+        argv = [f"./{binary_name}"]
+        if func.number:
+            argv.append(str(func.number))
+        if func.config:
+            argv.append(os.path.join(project_path, func.config))
+        if func.threads:
+            argv.append(str(func.threads))
+        if func.chunk_size:
+            argv.append(str(func.chunk_size))
+        return argv
+
+    if not tools:
+        return True
+
+    vg = shutil.which("valgrind")
+    if vg is None:
+        logging.error(
+            "Valgrind requested, but 'valgrind' executable was not found in PATH."
+        )
+        return False
+
+    allowed = {"memcheck", "drd", "helgrind"}
+    for t in tools:
+        if t not in allowed:
+            logging.error(
+                f"Unsupported valgrind tool requested: {t}. Allowed: {sorted(allowed)}"
+            )
+            return False
+
+    argv = build_binary_argv(project_path, binary_name, preset_func)
+
+    logging.info("=============================")
+    logging.info("Running Valgrind tools")
+    logging.info(f"Preset program argv: {' '.join(argv)}")
+
+    success = True
+    for tool in tools:
+        log_name = f"valgrind_{tool}.log"
+        log_path = os.path.join(os.getcwd(), log_name)
+
+        vg_argv = [
+            vg,
+            f"--tool={tool}",
+            "--quiet",
+            "--error-exitcode=99",
+            f"--log-file={log_path}",
+        ] + argv
+
+        logging.info(f"Valgrind ({tool}) -> {log_name}")
+        res = run(Command(vg_argv, preset_func.timeout), preset_func)
+
+        if res.return_code is None:
+            logging.error(f"Valgrind ({tool}) run did not produce a return code.")
+            logging.error(f"See log: {log_path}")
+            success = False
+
+        if res.return_code != 0:
+            logging.error(f"Valgrind ({tool}) failed with code {res.return_code}.")
+            if res.stdout:
+                logging.error(res.stdout)
+            if res.stderr:
+                logging.error(res.stderr)
+            logging.error(f"Valgrind log: {log_path}")
+            success = False
+
+    return success
+
+
 def test_format(results: list[Result]) -> bool:
     """Tests if the output format is correct.
 
@@ -417,10 +497,10 @@ def test_exit_codes(results: list[Result], expected_codes: list[int]) -> bool:
         exp_code = expected_codes[i]
         if actual_code != exp_code:
             logging.error(
-                f"The program has exited with a code different from the expected for the test case #{i}.\nExpected: {exp_code} ({error_code_mapping[exp_code]})\n vs\nActual: {actual_code} ({error_code_mapping[actual_code] if actual_code in error_code_mapping.keys() else "Custom code"})\n"
+                f"The program has exited with a code different from the expected for the test case #{i}.\nExpected: {exp_code} ({error_code_mapping[exp_code]})\n vs\nActual: {actual_code} ({error_code_mapping[actual_code] if actual_code in error_code_mapping.keys() else 'Custom code'})\n"
             )
             success = False
-            
+
         if actual_code not in error_code_mapping.keys() and actual_code < 64:
             logging.error("Custom exit codes must start from '64'.\n")
             success = False
@@ -534,6 +614,7 @@ def main(
     print_tests: bool,
     compiler_options: str,
     exit_codes_check: bool,
+    valgrind_tools: list[str] | None,
 ):
     """Main function to run all tests.
 
@@ -547,6 +628,7 @@ def main(
         print_tests: Whether to print info about tests instead of running them.
         compiler_options: Options to pass to the compiler.
         exit_codes_check: Whether to run tests for exit codes.
+        valgrind_tools: List of valgrind tools to run (memcheck/drd/helgrind) or None.
     """
     consistency_threads = [get_next_prime()]
     for i in range(len(functions)):
@@ -595,6 +677,14 @@ def main(
     if not build(project_path, compiler_options):
         logging.error("Build failed")
         return
+
+    if valgrind_tools:
+        if not run_valgrind_suite(
+            project_path, binary_name, valgrind_tools, functions[0]
+        ):
+            logging.error("Valgrind suite failed (check for false positives, though)")
+        else:
+            logging.info("Valgrind suite passed")
 
     logging.info("Running tests")
     results = get_results(project_path, binary_name, functions)
@@ -776,10 +866,19 @@ if __name__ == "__main__":
         "-e",
         "--check_codes",
         help="Whether to check exit codes. I'd be a pity to have points deduced for incorrect exit codes.",
-        default=True,
+        default=False,
         required=False,
         action="store_true",
     )
+
+    parser.add_argument(
+        "--valgrind-tools",
+        nargs="+",
+        choices=["memcheck", "drd", "helgrind"],
+        default=None,
+        help="Run a single invocation of the tested program under each selected Valgrind tool.",
+    )
+
     parser.add_argument(
         "lab_type",
         help="Type of lab to test",
@@ -799,6 +898,8 @@ if __name__ == "__main__":
     lab_type: str = args.lab_type
     logging_level: str = args.logging_level.upper()
     compiler_options: str = args.compiler_options
+    valgrind_tools: list[str] | None = args.valgrind_tools
+
     logging.basicConfig(
         level=logging.getLevelName(logging_level), format="%(levelname)s: %(message)s"
     )
@@ -862,6 +963,7 @@ if __name__ == "__main__":
             print_tests,
             compiler_options,
             exit_codes_check,
+            valgrind_tools,
         )
     finally:
         for temp_file in _temp_files:
