@@ -330,6 +330,8 @@ def run_valgrind_suite(
     if not tools:
         return True
 
+    logging.info(f"Preset program argv: {' '.join(argv)}")
+
     vg = shutil.which("valgrind")
     if vg is None:
         logging.error(
@@ -347,10 +349,6 @@ def run_valgrind_suite(
 
     argv = build_binary_argv(project_path, binary_name, preset_func)
 
-    logging.info("=============================")
-    logging.info("Running Valgrind tools")
-    logging.info(f"Preset program argv: {' '.join(argv)}")
-
     success = True
     for tool in tools:
         log_name = f"valgrind_{tool}.log"
@@ -365,7 +363,7 @@ def run_valgrind_suite(
         ] + argv
 
         logging.info(f"Valgrind ({tool}) -> {log_name}")
-        res = run(Command(vg_argv, preset_func.timeout), preset_func)
+        res = run(Command(vg_argv, None), preset_func)
 
         if res.return_code is None:
             logging.error(f"Valgrind ({tool}) run did not produce a return code.")
@@ -557,6 +555,9 @@ def get_next_prime(prev: float = 0) -> float:
 
 
 def build_exit_code_test_cases(num_threads, chunk_size):
+    # adding this as a cmd argument sounds like an overkill.
+    # Moreover, if your program detects the common errors we care about only after 120 seconds have passed, something is wrong.
+    exit_code_check_timeout = 120
     test_cases = []
     expected_codes = []
 
@@ -574,28 +575,68 @@ def build_exit_code_test_cases(num_threads, chunk_size):
         _temp_files.append(tmp_config)
 
     # wrong number of arguments (too few)
-    wna = Function(1, None, 4.54544762 * 10**6, 20, 0, 0, 3600)
+    wna = Function(
+        1,
+        None,
+        4.54544762 * 10**6,
+        20,
+        num_threads,
+        chunk_size,
+        exit_code_check_timeout,
+    )
     test_cases.append(wna)
     expected_codes.append(1)
 
     # wrong function number
-    wfn = Function(1972, correct_config.name, 4.54544762 * 10**6, 20, 0, 0, 3600)
+    wfn = Function(
+        1972,
+        correct_config.name,
+        4.54544762 * 10**6,
+        20,
+        num_threads,
+        chunk_size,
+        exit_code_check_timeout,
+    )
     test_cases.append(wfn)
     expected_codes.append(2)
 
     # invalid config path
-    icp = Function(1, "/usr/rewrite/in/rust", 4.54544762 * 10**6, 20, 0, 0, 3600)
+    icp = Function(
+        1,
+        "/usr/rewrite/in/rust",
+        4.54544762 * 10**6,
+        20,
+        num_threads,
+        chunk_size,
+        exit_code_check_timeout,
+    )
     test_cases.append(icp)
     expected_codes.append(3)
 
     # config parsing error
     for test_config in wrong_configs:
-        cpe_template = Function(1, test_config, 4.54544762 * 10**6, 20, 0, 0, 3600)
+        cpe_template = Function(
+            1,
+            test_config,
+            4.54544762 * 10**6,
+            20,
+            num_threads,
+            chunk_size,
+            exit_code_check_timeout,
+        )
         test_cases.append(cpe_template)
         expected_codes.append(5)
 
     # precision failure (There is practically no chance you can avoid it)
-    pf = Function(1, unreal_config.name, 4.54544762 * 10**6, 20, 0, 0, 3600)
+    pf = Function(
+        1,
+        unreal_config.name,
+        4.54544762 * 10**6,
+        20,
+        num_threads,
+        chunk_size,
+        exit_code_check_timeout,
+    )
     test_cases.append(pf)
     expected_codes.append(16)
 
@@ -615,6 +656,7 @@ def main(
     compiler_options: str,
     exit_codes_check: bool,
     valgrind_tools: list[str] | None,
+    lab_type: str,
 ):
     """Main function to run all tests.
 
@@ -629,6 +671,7 @@ def main(
         compiler_options: Options to pass to the compiler.
         exit_codes_check: Whether to run tests for exit codes.
         valgrind_tools: List of valgrind tools to run (memcheck/drd/helgrind) or None.
+        lab_type: type of the lab to run
     """
     consistency_threads = [get_next_prime()]
     for i in range(len(functions)):
@@ -679,6 +722,8 @@ def main(
         return
 
     if valgrind_tools:
+        logging.info("=============================")
+        logging.info("Running Valgrind tools")
         if not run_valgrind_suite(
             project_path, binary_name, valgrind_tools, functions[0]
         ):
@@ -754,12 +799,14 @@ def main(
         logging.info("=============================")
         logging.info("Testing the exit codes")
         exit_code_test_cases, expected_codes = build_exit_code_test_cases(
-            2 if speed_check else None, 3 if chunk_size_check else None
+            2 if lab_type != "serial" else None,
+            3 if lab_type in ["queue", "tpool"] else None,
         )
         exit_code_results = get_results(project_path, binary_name, exit_code_test_cases)
         if not test_exit_codes(exit_code_results, expected_codes):
             logging.error("Exit code tests failed")
             return
+        logging.info("Exit code tests passed")
 
     logging.info("All tests passed")
 
@@ -964,6 +1011,7 @@ if __name__ == "__main__":
             compiler_options,
             exit_codes_check,
             valgrind_tools,
+            lab_type,
         )
     finally:
         for temp_file in _temp_files:
