@@ -330,8 +330,6 @@ def run_valgrind_suite(
     if not tools:
         return True
 
-    logging.info(f"Preset program argv: {' '.join(argv)}")
-
     vg = shutil.which("valgrind")
     if vg is None:
         logging.error(
@@ -348,6 +346,7 @@ def run_valgrind_suite(
             return False
 
     argv = build_binary_argv(project_path, binary_name, preset_func)
+    logging.info(f"Preset program argv: {' '.join(argv)}")
 
     success = True
     for tool in tools:
