@@ -866,7 +866,7 @@ if __name__ == "__main__":
         "-k",
         "--chunk-size",
         action="store_true",
-        help="Whether to check if chunk size:threads of 3:2 is slower than 4:2. Only available for queue and tpool lab types",
+        help="Whether to check if (chunk size:threads) of (3:2) is slower than (4:2). Only available for queue and tpool lab types",
     )
     parser.add_argument(
         "-l",
@@ -903,7 +903,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--compiler_options",
-        help="The options you feed to the compiler can affect the result of your program. This argument is intended for fine-grained testing and development.",
+        help="""The options you feed to the compiler can affect the result of your program.
+        This argument is intended for fine-grained testing and development.
+        In case shell the treats value of this argument as a flag to script, try surrounding the value it with spaces.""",
         type=str,
         required=False,
         default="",
