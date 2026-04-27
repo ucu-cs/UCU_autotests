@@ -8,7 +8,7 @@
 
 uint32_t func(uint32_t number);
 // test function
-{
+// {
 //     uint32_t sum = 0;
 //     while (number > 0) {
 //         sum += number % 10;
