@@ -1,4 +1,4 @@
-#!/bin/bash
+
 
 RESET="\017"
 NORMAL="\033[0m"
@@ -6,6 +6,7 @@ GREEN="\033[1;32m"
 RED="\033[1;31m"
 
 LAB_DIR=$1
+EXE_NAME=${2:-openmpi}
 
 if [ ! -d "$LAB_DIR" ]; then
     echo "Could not find directory $LAB_DIR" > /dev/stderr
@@ -17,13 +18,16 @@ fi
 
 rm -rf ./results
 rm -rf ./container_scripts
+
 mkdir -p ./results
 
 cp -r ./scripts ./container_scripts
+sed -i "s/openmpi/$EXE_NAME/" ./container_scripts/exec_app.sh
+chmod +x ./container_scripts/*sh
 cp -r ./config_files/* ./container_scripts/
 
-rm -rf ./app
-cp -r $LAB_DIR ./app
+mkdir -p ./app
+cp -r $LAB_DIR/* ./app/
 
 # Execution
 #
