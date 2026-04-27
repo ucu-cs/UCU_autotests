@@ -8,13 +8,14 @@ mpi-worker1
 mpi-worker2
 EOF
 
+cd /app
+./compile.sh -o
+
 su - mpiuser << EOF
 
 cd /app
 
-cp -r /ssh/config_file /app/config_file
-
 echo "Running MPI program for the first time"
-mpirun --hostfile /app/hostfile -np 3 /app/bin/openmpi /config_files/config.cfg
+mpirun --hostfile /app/hostfile -np 3 /app/cmake-build-release/openmpi /config_files/config.cfg
 
 EOF

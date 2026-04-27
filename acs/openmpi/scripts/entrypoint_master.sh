@@ -2,9 +2,7 @@
 
 service ssh start
 
-# Set up ssh
-
-su - mpiuser << 'EOF'
+su - mpiuser << EOF
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
@@ -12,51 +10,38 @@ if [ ! -f ~/.ssh/id_rsa ]; then
     ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
 fi
 
-# Copy public key to shared volume for other containers
 cp ~/.ssh/id_rsa.pub /ssh/$(hostname).pub
+touch /ssh/$(hostname).ready
 EOF
 
-# Try to copy keys from other two containers
-while [ ! -f /ssh/mpi-master.pub ] || [ ! -f /ssh/mpi-worker1.pub ] || [ ! -f /ssh/mpi-worker2.pub ]; do
-    echo "Waiting for all public keys..."
-    sleep 2
+while [ ! -f /ssh/mpi-master.ready ] || \
+      [ ! -f /ssh/mpi-worker1.ready ] || \
+      [ ! -f /ssh/mpi-worker2.ready ]; do
+    sleep 1
 done
 
 su - mpiuser << 'EOF'
-# Add all hosts to known_hosts
-ssh-keyscan -H mpi-master >> ~/.ssh/known_hosts
-ssh-keyscan -H mpi-worker1 >> ~/.ssh/known_hosts
-ssh-keyscan -H mpi-worker2 >> ~/.ssh/known_hosts
+mkdir -p ~/.ssh
 
-ssh-copy-id mpiuser@mpi-master
-ssh-copy-id mpiuser@mpi-worker1
-ssh-copy-id mpiuser@mpi-worker2
-EOF
+echo "Host *" > ~/.ssh/config
+echo "    StrictHostKeyChecking no" >> ~/.ssh/config
+echo "    UserKnownHostsFile=/dev/null" >> ~/.ssh/config
+chmod 600 ~/.ssh/config
 
-su - mpiuser << 'EOF'
-cat /ssh/mpi-master.pub /ssh/mpi-worker1.pub /ssh/mpi-worker2.pub > ~/.ssh/authorized_keys
+cat /ssh/*.pub > ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
+
+for host in mpi-master mpi-worker1 mpi-worker2; do
+    until ssh-keyscan -H $host >> ~/.ssh/known_hosts 2>/dev/null; do
+        sleep 1
+    done
+done
 EOF
 
-
-# NFS setup based on hostname
-echo "Setting up NFS server on master node..."
-
-# Configure NFS exports
-echo "/app *(rw,sync,no_root_squash,no_subtree_check)" > /etc/exports
-
-# Start NFS server
-service rpcbind start
-service nfs-kernel-server start
-exportfs -a
-
-echo "NFS server is running and /app is shared"
-
-# Compile the application on master
 echo "Compiling application on master node..."
 cd /app
-
-./compile.sh
+./compile.sh -o
+chmod -R 755 /app/bin/
 
 echo "SSH setup completed. Keeping container running..."
 tail -f /dev/null
