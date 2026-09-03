@@ -15,24 +15,24 @@ void func(int32_t* input_array, size_t size, int32_t* min, int32_t* max, double*
 //     int32_t local_min = input_array[0];
 //     int32_t local_max = input_array[0];
 //     double sum = 0.0;
-//
+
 //     for (size_t i = 0; i < size; ++i) {
 //         if (input_array[i] < local_min) local_min = input_array[i];
 //         if (input_array[i] > local_max) local_max = input_array[i];
 //         sum += input_array[i];
 //     }
-//
+
 //     double mean_val = sum / size;
 //     double var_sum = 0.0;
 //     for (size_t i = 0; i < size; ++i) {
 //         double diff = input_array[i] - mean_val;
 //         var_sum += diff * diff;
 //     }
-//
+
 //     *min = local_min;
 //     *max = local_max;
 //     *mean = mean_val;
-//     *variance = var_sum / size;
+//     *variance = (size > 1) ? (var_sum / (size - 1)) : 0.0;
 // }
 
 void read_file_int32(int32_t *array, const size_t size, const char *filename) {
