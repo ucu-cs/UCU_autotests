@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import shutil
 import sys
 import subprocess
 from pathlib import Path
@@ -236,14 +237,8 @@ def clean_all_artifacts(project_dir: Path):
     ]):
         if d.exists():
             if d.is_dir():
-                for p in d.rglob("*"):
-                    try:
-                        if p.is_file():
-                            p.unlink()
-                    except Exception:
-                        pass
                 try:
-                    d.rmdir()
+                    shutil.rmtree(d)
                 except Exception:
                     pass
             else:
