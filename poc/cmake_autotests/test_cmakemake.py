@@ -296,8 +296,8 @@ def parse_args():
     p.add_argument("--bash", action="store_true", help="Check compile.sh at project root")
     p.add_argument("--make", action="store_true", help="Check Makefiles in library/ and example(s)/")
     p.add_argument("--cmake", action="store_true", help="Check CMake configure/build")
-    p.add_argument("--sample", "-S", required=True, help="Folder name for the sample project (required)")
-    p.add_argument("--mystring", "-M", required=True, help="Folder name for the mystring project (required)")
+    p.add_argument("--sample", "-S", default="sample", help="Folder name for the sample project")
+    p.add_argument("--mystring", "-M", default="mystring", help="Folder name for the mystring project")
     args = p.parse_args()
     if not (args.bash or args.make or args.cmake):
         args.bash = args.make = args.cmake = True
