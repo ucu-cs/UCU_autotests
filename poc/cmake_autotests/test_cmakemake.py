@@ -79,6 +79,21 @@ def find_libs(project_dir: Path):
     a = list(lib_bin.glob("lib*.a"))
     return so, a
 
+def find_cmake_libs(build_dir: Path):
+    """Find shared and static libraries anywhere in the CMake build tree."""
+    if not build_dir.is_dir():
+        return [], []
+    so = list(build_dir.rglob("lib*.so")) + list(build_dir.rglob("lib*.dylib"))
+    a = list(build_dir.rglob("lib*.a"))
+    return so, a
+
+def find_cmake_example_execs(build_dir: Path):
+    """Find example executables in the CMake build tree."""
+    if not build_dir.is_dir():
+        return []
+    return [p for p in build_dir.rglob("*")
+            if p.is_file() and os.access(p, os.X_OK) and p.suffix == ""]
+
 def find_example_objs(ex_dir: Path | None):
     """Find .o objects only in example(s)/obj/."""
     if not ex_dir:
@@ -216,6 +231,13 @@ def check_cmake(project_dir: Path):
     if code == 0:
         code2, out2, err2 = run(["cmake", "--build", str(b)])
         res.append(("CMake: build", code2 == 0, (err2 or out2).strip()))
+
+    dyn, sta = find_cmake_libs(b)
+    res.append(("CMake: libs in .cmake-build/", len(dyn) > 0 and len(sta) > 0,
+                f"dynamic={len(dyn)}; static={len(sta)}"))
+    exes = find_cmake_example_execs(b)
+    res.append(("CMake: executables in .cmake-build/", len(exes) > 0,
+                f"count={len(exes)}"))
 
     print_progress("CMake", "done.")
     return res
