@@ -2,37 +2,28 @@
 
 ### How to use autotest script:
 
-P.S: sign '|' mean just OR here
-
 To get info about all options:
 ```bash
-python3 test_cmakemake.py -h | --help
+python3 test_cmakemake.py -h
 ```
 
-In order to run a script you MUST use 2 flags:
+In order to run tests you MUST use 2 flags - `-S` and `-M`. Replace text in arrow brackets with your paths.
 
 ```bash
-python test_cmakemake.py [-S | --sample] <path/to/sample/libary> [-M | --mystring] <path/to/mystring> 
+python test_cmakemake.py -S <path/to/sample/libary> -M <path/to/mystring> 
 ```
 
-To run different tests :
+You can run different tests separately using `--bash`, `--make` and `--cmake` flags.
 ```bash
-python3 test_cmakemake.py ... --bash | --cmake | --make
+python3 test_cmakemake.py -S <path/to/sample/libary> -M <path/to/mystring> --bash
 ```
 
 You can also combine those:
-
 ```bash
-python3 test_cmakemake.py ... --bash --make
+python3 test_cmakemake.py -S <path/to/sample/libary> -M <path/to/mystring> --bash --make
 ```
 
 To run all the tests just don't write any of above.
-
-To clean all bin / obj folders after testing (a.k.a clean):
-
-```bash
-python3 test_cmakemake.py ... [--clean | -c]
-```
 
 ### Project Structure ( IMPORTANT )
 Structure of the project **MUST BE** the same as on example in metodychka
