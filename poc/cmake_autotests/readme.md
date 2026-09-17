@@ -1,39 +1,45 @@
 # Autotests for Lab2: Cmake/Make
 
-### How to use autotest script:
+## Project Structure ( IMPORTANT )
+
+For the tests to work correctly, your lab must strictly follow this structure:
+
+```text
+lab2-cmake-surnames/
+├── sample/
+│   ├── library/ ...
+│   ├── example/ ...
+│   └── ...
+├── mystring/
+│   ├── library/ ...
+│   ├── example/ ...
+│   └── ...
+├── README.md
+└── test_cmakemake.py
+```
+
+Where `sample` is a directory with your assigned library (bzip2 / libjpeg / zlib) and `mystring` is your implementation of cstring.
+
+## How to use autotest script:
+
+To run tests:
+```bash
+python3 test_cmakemake.py
+```
 
 To get info about all options:
 ```bash
 python3 test_cmakemake.py -h
 ```
 
-In order to run tests you MUST use 2 flags - `-S` and `-M`. Replace text in arrow brackets with your paths.
-
-```bash
-python test_cmakemake.py -S <path/to/sample/libary> -M <path/to/mystring> 
-```
-
 You can run different tests separately using `--bash`, `--make` and `--cmake` flags.
 ```bash
-python3 test_cmakemake.py -S <path/to/sample/libary> -M <path/to/mystring> --bash
+python3 test_cmakemake.py --bash
 ```
 
 You can also combine those:
 ```bash
-python3 test_cmakemake.py -S <path/to/sample/libary> -M <path/to/mystring> --bash --make
+python3 test_cmakemake.py --bash --make
 ```
 
 To run all the tests just don't write any of above.
-
-### Project Structure ( IMPORTANT )
-Structure of the project **MUST BE** the same as on example in metodychka
-
-Names of "**_mystring_**" and "**_sample_lib_**" can be **any**, since you enter those as flags in order to run the script
-
-Example of project structure: 
-
-lab2_cmakemake-...surnames:\
-├── sample_lib: ... \
-├── mystring: ... \
-└── README.md
-
