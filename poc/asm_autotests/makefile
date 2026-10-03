@@ -1,33 +1,61 @@
-C = gcc
-FS = asm
-OBJ_D = obj
-BIN_D = bin
-SRC_D = src
-NAME_S = call_from_s
-NAME_C = call_from_c
-FUNC_NAME = func
-RUNNER = test
-TEST_DIR =
-DATA_DIR =			#TODO: export this as an environment variable and use as a path in test functions.
-FUNC_PATH =
+CC = gcc
+CPPFLAGS ?=
+CFLAGS ?= -Wall -Wextra
+ASMFLAGS ?=
+LDFLAGS ?=
+LDLIBS ?=
 
-all: $(TEST_DIR)/$(BIN_D)/$(RUNNER)
+SRC_D := src
+OBJ_D := obj
+BIN_D := bin
+RUNNER := test
 
-$(TEST_DIR)/$(BIN_D): #create directory if it doesn't exist
-	mkdir -p $@
-$(TEST_DIR)/$(OBJ_D): #create directory if it doesn't exist
-	mkdir -p $@
+TEST_DIR ?=
+FUNC_PATH ?=
 
-$(FUNC_PATH)/$(OBJ_D)/$(FUNC_NAME).o: $(FUNC_PATH)/$(SRC_D)/$(FUNC_NAME).asm #recursively invoke make to build object file in function directory
-	make -C $(FUNC_PATH) all
+# Safe placeholder roots keep an accidental plain `make` from constructing
+# absolute paths such as /bin/test before the validation target can fail.
+TEST_ROOT := $(if $(strip $(TEST_DIR)),$(TEST_DIR),.missing-test-dir)
+FUNC_ROOT := $(if $(strip $(FUNC_PATH)),$(FUNC_PATH),.missing-func-path)
 
-$(TEST_DIR)/$(OBJ_D)/$(FUNC_NAME).o: $(FUNC_PATH)/$(OBJ_D)/$(FUNC_NAME).o $(TEST_DIR)/$(OBJ_D) #create symlink to function object directory
-	ln -sf $< $(TEST_DIR)/$(OBJ_D)/$(<F)
+TEST_SOURCE := $(TEST_ROOT)/$(SRC_D)/test.c
+FUNC_SOURCE := $(FUNC_ROOT)/$(SRC_D)/func.s
+TEST_OBJ_DIR := $(TEST_ROOT)/$(OBJ_D)
+TEST_BIN_DIR := $(TEST_ROOT)/$(BIN_D)
+TEST_OBJECT := $(TEST_OBJ_DIR)/test.o
+RUNNER_PATH := $(TEST_BIN_DIR)/$(RUNNER)
 
-$(TEST_DIR)/$(BIN_D)/$(RUNNER): $(TEST_DIR)/$(OBJ_D)/$(FUNC_NAME).o $(TEST_DIR)/$(SRC_D)/$(RUNNER).c $(TEST_DIR)/$(BIN_D) #compile test program
-	$(C) $(TEST_DIR)/$(SRC_D)/$(RUNNER).c $< -o $@
-			
+ASM_SOURCES := $(filter-out $(FUNC_ROOT)/$(SRC_D)/main_a.s,               $(wildcard $(FUNC_ROOT)/$(SRC_D)/*.s))
+ASM_OBJECTS := $(patsubst $(FUNC_ROOT)/$(SRC_D)/%.s,               $(TEST_OBJ_DIR)/student_%.o,$(ASM_SOURCES))
+
+.PHONY: all check run clean help
+
+all: $(RUNNER_PATH)
+
+check:
+	@if [ -z "$(strip $(FUNC_PATH))" ]; then 		echo "ERROR: FUNC_PATH is required" >&2; exit 2; 	fi
+	@if [ -z "$(strip $(TEST_DIR))" ]; then 		echo "ERROR: TEST_DIR is required" >&2; exit 2; 	fi
+	@if [ ! -f "$(FUNC_SOURCE)" ]; then 		echo "ERROR: missing $(FUNC_SOURCE)" >&2; exit 2; 	fi
+	@if [ ! -f "$(TEST_SOURCE)" ]; then 		echo "ERROR: missing $(TEST_SOURCE)" >&2; exit 2; 	fi
+
+$(TEST_OBJ_DIR) $(TEST_BIN_DIR): | check
+	mkdir -p "$@"
+
+$(TEST_OBJ_DIR)/student_%.o: $(FUNC_ROOT)/$(SRC_D)/%.s | $(TEST_OBJ_DIR)
+	$(CC) $(CPPFLAGS) $(ASMFLAGS) -c "$<" -o "$@"
+
+$(TEST_OBJECT): $(TEST_SOURCE) | $(TEST_OBJ_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c "$<" -o "$@"
+
+$(RUNNER_PATH): $(TEST_OBJECT) $(ASM_OBJECTS) | $(TEST_BIN_DIR)
+	$(CC) $(LDFLAGS) $(TEST_OBJECT) $(ASM_OBJECTS) $(LDLIBS) -o "$@"
+
+run: $(RUNNER_PATH)
+	cd "$(TEST_BIN_DIR)" && ./$(RUNNER)
+
 clean:
-	rm -rf $(TEST_DIR)/$(BIN_D) $(TEST_DIR)/$(OBJ_D)
+	@if [ -z "$(strip $(TEST_DIR))" ]; then 		echo "ERROR: TEST_DIR is required" >&2; exit 2; 	fi
+	rm -rf "$(TEST_ROOT)/$(OBJ_D)" "$(TEST_ROOT)/$(BIN_D)"
 
-.PHONY : clean
+help:
+	@printf '%s\n' 	  'Build: make FUNC_PATH=/path/to/func_1 TEST_DIR=1_sort_32_uint all' 	  'Run:   make FUNC_PATH=/path/to/func_1 TEST_DIR=1_sort_32_uint run' 	  'Check: make FUNC_PATH=/path/to/func_1 TEST_DIR=1_sort_32_uint check' 	  'Clean: make TEST_DIR=1_sort_32_uint clean'

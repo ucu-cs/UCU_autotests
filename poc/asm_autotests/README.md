@@ -1,53 +1,88 @@
-# UCU fasm lab work functions
+# UCU x86 assembly lab autotests
 
-##### with array always give it's size! There is no way to find size of C array. If few arrays are of the same size, only one coefficient can be passed.
+This directory contains functional tests for the x86 assembly laboratory work.
+The tests call the student's function `func` through the platform C ABI and
+compare its result with the expected result.
 
-#### [tasks description](https://github.com/ucu-cs/template_asm/blob/master/task.md)
+The current project template is:
+https://github.com/ucu-poc-acs-os-cpp/template_asm
 
-## THIS REPO for:
-1) test cases
-2) scripts for generating test cases (can be python or C/C++/Rust)
-3) test scripts (in C language)
+## Scope
 
-## Building and running tests
-Each folder in this repository contains tests for one or more tasks. Refer to [this](https://github.com/ucu-cs/template_asm/blob/master/task.md) document for more information about each task.
+The autotest harness tests the assembly function itself. It intentionally does
+**not** invoke the student's `makefile`: correctness of the project build files,
+C/assembly/Python demonstrations, and other submission requirements should be
+checked separately.
 
-All tests should be compiled and linked with an object file `func.o`, which contains the function `func`. This is the function being tested.
-In order to do all this, a `makefile` in root directory is provided.
-### Makefile
+`FUNC_PATH` must point to one of the student's function directories, for example
+`func_1`. The expected layout is:
 
-The build process consists of three steps
+```text
+func_1/
+└── src/
+    ├── func.s
+    ├── main_a.s
+    └── ... optional helper .s files ...
+```
 
-1. Assemble source code for `func.o` into an object file in an external directory specified in `FUNC_PATH`. This relies on the `makefile` in external directory
-2. Symlink this object file into a local `obj` dir, which itself is in `TEST_DIR`
-3. Compile the test program in `TEST_DIR` into a binary and link it with the object file `func.o`
+The harness assembles `src/func.s` and every additional `src/*.s` file except
+`src/main_a.s`. This allows a solution to be split into helper assembly files
+without linking the student's demonstration program into the test executable.
 
-Therefore, variables `FUNC_PATH` and `TEST_DIR` **must** be set with each `make` command.
+Each test directory contains `src/test.c`. Test data are stored under
+`test_arrays/`.
 
-Note: make assumes that the external directory `FUNC_PATH` contains a valid makefile that creates a `func.o` object in `obj` dir when run with target `all`.
+## Building and running a test
 
-Example
+Run `make` from this `asm_autotests` directory. Both `FUNC_PATH` and `TEST_DIR`
+are required for building or running a test.
+
+Build only:
+
 ```shell
-make FUNC_PATH=abs/path/to/func_1 TEST_DIR=5_axb_32_int all 
-```
-It is possible to use targets other than `all` if you want only some of build steps to run. You may also want to change other variables, such as path to assmebler, c compiler, etc. Refer to `makefile` for more info.
-
-Note: to get an absolute path from a relative path, set `FUNC_PATH` like this
-```
-make FUNC_PATH=$(realpath ../relative/path/to/func) ...
+make FUNC_PATH=/path/to/student/func_1 TEST_DIR=1_sort_32_uint all
 ```
 
-Simple way to make it work:
+Build and run:
 
-1. Compile func_x (student`s function)
-2. Type command: make FUNC_PATH="path to dir func_x" TEST_DIR="path to dir of the test" all
-3. If there is a python script: cd test_arrays/scripts -> python3 "script" -> move to 4.
-4. If there is not a python script: cd "test dir path"/bin/ -> ./test
+```shell
+make FUNC_PATH=/path/to/student/func_1 TEST_DIR=1_sort_32_uint run
+```
 
-## HOW TO CONTRIBUTE
-1) check what is done
-2) create an issue about WHAT TO ADD
-3) assign to yourself
-4) contribute =)
+The `run` target starts the executable with `TEST_DIR/bin` as its current
+working directory. This preserves the relative paths used by the existing test
+programs to access `test_arrays/`.
 
-# THE BEST - to add your implementation in `asm` =)) but not necessary
+Remove generated files for one test:
+
+```shell
+make TEST_DIR=1_sort_32_uint clean
+```
+
+Validate paths without compiling:
+
+```shell
+make FUNC_PATH=/path/to/student/func_1 TEST_DIR=1_sort_32_uint check
+```
+
+By default the harness uses `gcc` as the compiler driver for both C and GAS
+`.s` files. Toolchain options can be overridden on the command line, for
+example with `CC`, `CFLAGS`, `ASMFLAGS`, `LDFLAGS`, and `LDLIBS`.
+
+The tests must be built with a toolchain matching the ABI targeted by the
+student implementation. For example, a Windows implementation should be tested
+with the corresponding Windows/MSYS2 MINGW64 toolchain, while a Linux
+implementation should be tested with a Linux toolchain.
+
+## Test directories
+
+The directories `1_sort_32_uint` through `15_sum_digits_32_uint` correspond to
+the main task variants. The root `makefile` is the single build harness for all
+of them; per-test makefiles are not used.
+
+## Contributing
+
+1. Check what is already covered.
+2. Create an issue describing what should be added or fixed.
+3. Assign the issue to yourself.
+4. Add or improve the test and its test data.
