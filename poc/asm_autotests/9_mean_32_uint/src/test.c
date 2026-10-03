@@ -1,83 +1,223 @@
-//
-// Created by rediskajunior on 10/15/25.
-//
-
-#include <stdio.h>
+#include <float.h>
+#include <inttypes.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include <math.h>
 
-const double EPSILON = 1e-6;
+#define STRICT_FACTOR 16.0L
+#define COARSE_RELATIVE 1.0e-6L
+#define GUARD_U32 UINT32_C(0x13579bdf)
+#define GUARD_DOUBLE 123456789.25
+#define OUTPUT_FILL 765432109.5
 
-void func(uint32_t* input_array, size_t size, double* harmonic_mean, double* arithmetic_mean);
-// { test function
-//     double sum = 0.0;
-//     double inv_sum = 0.0;
-//     for (size_t i = 0; i < size; ++i) {
-//         sum += input_array[i];
-//         inv_sum += 1.0 / input_array[i];
-//     }
-//     *arithmetic_mean = sum / size;
-//     *harmonic_mean = size / inv_sum;
-// }
+extern void func(uint32_t *input_array, size_t size,
+                 double *harmonic_mean, double *arithmetic_mean);
 
-void read_file_uint32(uint32_t *array, const size_t size, const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Cannot open file");
-        exit(9);
+static uint32_t next_u32(uint32_t *state)
+{
+    *state = *state * UINT32_C(1664525) + UINT32_C(1013904223);
+    return *state;
+}
+
+static uint64_t double_bits(double value)
+{
+    uint64_t bits;
+    memcpy(&bits, &value, sizeof(bits));
+    return bits;
+}
+
+static int double_is_finite(double value)
+{
+    return (double_bits(value) & UINT64_C(0x7ff0000000000000)) !=
+           UINT64_C(0x7ff0000000000000);
+}
+
+static uint64_t ulp_distance(double a, double b)
+{
+    if (a == b) {
+        return 0;
     }
+
+    uint64_t ua = double_bits(a);
+    uint64_t ub = double_bits(b);
+
+    if ((ua ^ ub) & UINT64_C(0x8000000000000000)) {
+        return UINT64_MAX;
+    }
+
+    return ua > ub ? ua - ub : ub - ua;
+}
+
+static long double abs_ld(long double value)
+{
+    return value < 0.0L ? -value : value;
+}
+
+static void reference_means(const uint32_t *input, size_t size,
+                            long double *harmonic_mean,
+                            long double *arithmetic_mean)
+{
+    long double sum = 0.0L;
+    long double reciprocal_sum = 0.0L;
 
     for (size_t i = 0; i < size; ++i) {
-        if (fscanf(file, "%u", &array[i]) != 1) {
-            fprintf(stderr, "Error reading element %zu from %s\n", i, filename);
-            exit(10);
+        long double value = (long double)input[i];
+        sum += value;
+        reciprocal_sum += 1.0L / value;
+    }
+
+    *arithmetic_mean = sum / (long double)size;
+    *harmonic_mean = (long double)size / reciprocal_sum;
+}
+
+static int check_result(const char *case_name, const char *quantity,
+                        double actual, long double expected, size_t size)
+{
+    if (!double_is_finite(actual)) {
+        fprintf(stderr,
+                "ERROR: case \"%s\", %s: student result is NaN or infinity\n",
+                case_name, quantity);
+        return 1;
+    }
+
+    long double relative_error =
+        abs_ld((long double)actual - expected) / expected;
+    long double strict_limit =
+        STRICT_FACTOR * (long double)(size + 4) * (long double)DBL_EPSILON;
+
+    if (relative_error <= strict_limit) {
+        return 0;
+    }
+
+    double expected_double = (double)expected;
+    uint64_t ulps = ulp_distance(actual, expected_double);
+
+    fprintf(stderr,
+            "ERROR: case \"%s\", %s\n"
+            "  expected         = %.21Lg\n"
+            "  expected(double) = %a\n"
+            "  actual           = %a\n",
+            case_name, quantity, expected, expected_double, actual);
+
+    if (ulps == UINT64_MAX) {
+        fprintf(stderr, "  ULP diff         = opposite signs\n");
+    } else {
+        fprintf(stderr, "  ULP diff         = %" PRIu64 "\n", ulps);
+    }
+
+    fprintf(stderr,
+            "  relative error   = %.3Le\n"
+            "  strict limit     = %.3Le\n",
+            relative_error, strict_limit);
+
+    if (relative_error <= COARSE_RELATIVE) {
+        fprintf(stderr,
+                "  Result is numerically close, but exceeds the required accuracy.\n");
+    } else {
+        fprintf(stderr,
+                "  Result is not sufficiently close to the expected mean.\n");
+    }
+
+    return 1;
+}
+
+static int run_case(const char *name, const uint32_t *values, size_t size)
+{
+    uint32_t input_storage[size + 2];
+    uint32_t input_copy[size];
+    double harmonic_storage[3] = { GUARD_DOUBLE, OUTPUT_FILL, GUARD_DOUBLE };
+    double arithmetic_storage[3] = { GUARD_DOUBLE, OUTPUT_FILL, GUARD_DOUBLE };
+
+    input_storage[0] = GUARD_U32;
+    memcpy(&input_storage[1], values, size * sizeof(values[0]));
+    input_storage[size + 1] = GUARD_U32;
+    memcpy(input_copy, values, size * sizeof(values[0]));
+
+    long double harmonic_expected;
+    long double arithmetic_expected;
+    reference_means(input_copy, size, &harmonic_expected, &arithmetic_expected);
+
+    func(&input_storage[1], size,
+         &harmonic_storage[1], &arithmetic_storage[1]);
+
+    if (input_storage[0] != GUARD_U32 ||
+        input_storage[size + 1] != GUARD_U32 ||
+        harmonic_storage[0] != GUARD_DOUBLE ||
+        harmonic_storage[2] != GUARD_DOUBLE ||
+        arithmetic_storage[0] != GUARD_DOUBLE ||
+        arithmetic_storage[2] != GUARD_DOUBLE) {
+        fprintf(stderr,
+                "ERROR: case \"%s\": function wrote outside an array or output\n",
+                name);
+        return 1;
+    }
+
+    if (memcmp(&input_storage[1], input_copy,
+               size * sizeof(input_copy[0])) != 0) {
+        fprintf(stderr,
+                "ERROR: case \"%s\": function modified the input array\n",
+                name);
+        return 1;
+    }
+
+    if (check_result(name, "harmonic mean",
+                     harmonic_storage[1], harmonic_expected, size) != 0) {
+        return 1;
+    }
+
+    if (check_result(name, "arithmetic mean",
+                     arithmetic_storage[1], arithmetic_expected, size) != 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
+int main(void)
+{
+    static const uint32_t singleton[] = { UINT32_C(1) };
+    static const uint32_t pair[] = { UINT32_C(1), UINT32_C(3) };
+    static const uint32_t equal_values[] = {
+        UINT32_C(123456789), UINT32_C(123456789),
+        UINT32_C(123456789), UINT32_C(123456789),
+        UINT32_C(123456789), UINT32_C(123456789),
+        UINT32_C(123456789)
+    };
+    static const uint32_t near_max[] = {
+        UINT32_MAX, UINT32_MAX - UINT32_C(1),
+        UINT32_MAX - UINT32_C(2), UINT32_MAX - UINT32_C(15),
+        UINT32_MAX - UINT32_C(255), UINT32_MAX - UINT32_C(65535)
+    };
+
+    uint32_t powers[32];
+    for (size_t i = 0; i < 32; ++i) {
+        powers[i] = UINT32_C(1) << i;
+    }
+
+    uint32_t generated[257];
+    uint32_t state = UINT32_C(0x91e10da5);
+    for (size_t i = 0; i < 257; ++i) {
+        generated[i] = next_u32(&state);
+        if (generated[i] == 0) {
+            generated[i] = 1;
         }
     }
-    fclose(file);
-}
 
-void read_file_double(double *value, const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Cannot open file");
-        exit(9);
+    if (run_case("singleton", singleton,
+                 sizeof(singleton) / sizeof(singleton[0])) != 0 ||
+        run_case("pair", pair,
+                 sizeof(pair) / sizeof(pair[0])) != 0 ||
+        run_case("equal values", equal_values,
+                 sizeof(equal_values) / sizeof(equal_values[0])) != 0 ||
+        run_case("powers of two", powers,
+                 sizeof(powers) / sizeof(powers[0])) != 0 ||
+        run_case("near UINT32_MAX", near_max,
+                 sizeof(near_max) / sizeof(near_max[0])) != 0 ||
+        run_case("deterministic generated", generated,
+                 sizeof(generated) / sizeof(generated[0])) != 0) {
+        return 1;
     }
 
-    if (fscanf(file, "%lf", value) != 1) {
-        fprintf(stderr, "Error reading value from %s\n", filename);
-        exit(10);
-    }
-
-    fclose(file);
-}
-
-int main() {
-    const size_t SIZE = 32;
-    uint32_t input[SIZE], input_copy[SIZE];
-    double harmonic_mean = 0.0, arithmetic_mean = 0.0;
-    double harmonic_right = 0.0, arithmetic_right = 0.0;
-
-    read_file_uint32(input, SIZE, "../../test_arrays/9_mean_32_uint/input_32uint.lst");
-    read_file_double(&harmonic_right, "../../test_arrays/9_mean_32_uint/hm_32uint.lst");
-    read_file_double(&arithmetic_right, "../../test_arrays/9_mean_32_uint/am_32uint.lst");
-
-    memcpy(input_copy, input, SIZE * sizeof(uint32_t));
-
-    func(input, SIZE, &harmonic_mean, &arithmetic_mean);
-
-    if (fabs(harmonic_mean - harmonic_right) > EPSILON) {
-        printf("ERROR: harmonic mean mismatch: expected %lf, got %lf\n",
-               harmonic_right, harmonic_mean);
-        exit(1);
-    }
-
-    if (fabs(arithmetic_mean - arithmetic_right) > EPSILON) {
-        printf("ERROR: arithmetic mean mismatch: expected %lf, got %lf\n",
-               arithmetic_right, arithmetic_mean);
-        exit(1);
-    }
     printf("All tests passed successfully.\n");
     return 0;
 }
