@@ -1,53 +1,87 @@
-//
-// Created by rediskajunior on 10/22/25.
-//
-
-#include <stdio.h>
+#include <inttypes.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdio.h>
 
-uint32_t func(uint32_t number);
-// test function
-// {
-//     uint32_t sum = 0;
-//     while (number > 0) {
-//         sum += number % 10;
-//         number /= 10;
-//     }
-//     return sum;
-// }
+#define GENERATED_COUNT 1000
 
-void read_file_uint32(uint32_t *array, const size_t size, const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        perror("Cannot open input file");
-        exit(1);
+extern uint32_t func(uint32_t number);
+
+static uint32_t next_u32(uint32_t *state)
+{
+    *state = *state * UINT32_C(1664525) + UINT32_C(1013904223);
+    return *state;
+}
+
+static uint32_t digit_sum(uint32_t number)
+{
+    uint32_t sum = 0;
+
+    do {
+        sum += number % UINT32_C(10);
+        number /= UINT32_C(10);
+    } while (number != 0);
+
+    return sum;
+}
+
+static int check_value(const char *group, size_t index, uint32_t value)
+{
+    uint32_t expected = digit_sum(value);
+    uint32_t actual = func(value);
+
+    if (actual != expected) {
+        fprintf(stderr,
+                "ERROR: %s[%zu]: input=%" PRIu32
+                ", expected=%" PRIu32 ", got=%" PRIu32 "\n",
+                group, index, value, expected, actual);
+        return 1;
     }
 
-    for (size_t i = 0; i < size; ++i) {
-        if (fscanf(file, "%u", &array[i]) != 1) {
-            fprintf(stderr, "Error reading element %zu from %s\n", i, filename);
-            fclose(file);
-            exit(2);
+    return 0;
+}
+
+int main(void)
+{
+    static const uint32_t fixed_values[] = {
+        0,
+        1,
+        5,
+        9,
+        10,
+        19,
+        99,
+        100,
+        101,
+        999,
+        1000,
+        12345,
+        99999,
+        UINT32_C(1000000000),
+        UINT32_C(1111111111),
+        UINT32_C(2000000000),
+        UINT32_C(2147483647),
+        UINT32_C(4000000000),
+        UINT32_C(4040404040),
+        UINT32_C(987654321),
+        UINT32_C(4294967290),
+        UINT32_MAX
+    };
+
+    for (size_t i = 0;
+         i < sizeof(fixed_values) / sizeof(fixed_values[0]);
+         ++i) {
+        if (check_value("fixed", i, fixed_values[i]) != 0) {
+            return 1;
         }
     }
 
-    fclose(file);
-}
+    uint32_t state = UINT32_C(0xd1b54a35);
 
-int main() {
-    const size_t SIZE = 16;
-    uint32_t input[SIZE];
-    uint32_t expected[SIZE];
+    for (size_t i = 0; i < GENERATED_COUNT; ++i) {
+        uint32_t value = next_u32(&state);
 
-    read_file_uint32(input, SIZE, "../../test_arrays/15_sum_digits_32uint/input_32uint.lst");
-    read_file_uint32(expected, SIZE, "../../test_arrays/15_sum_digits_32uint/output_sum.lst");
-
-    for (size_t i = 0; i < SIZE; ++i) {
-        uint32_t result = func(input[i]);
-        if (result != expected[i]) {
-            printf("ERROR: for input %u expected %u but got %u\n", input[i], expected[i], result);
-            exit(1);
+        if (check_value("generated", i, value) != 0) {
+            return 1;
         }
     }
 
