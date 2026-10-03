@@ -29,8 +29,9 @@ The harness assembles `src/func.s` and every additional `src/*.s` file except
 `src/main_a.s`. This allows a solution to be split into helper assembly files
 without linking the student's demonstration program into the test executable.
 
-Each test directory contains `src/test.c`. Test data are stored under
-`test_arrays/`.
+Each test directory contains `src/test.c`. The sorting tests (1-4) use
+fixture files stored under `test_arrays/`. Tests 5-15 are self-contained and
+compute their expected results directly in the test program.
 
 ## Checking a student's lab
 
@@ -80,8 +81,8 @@ make FUNC_PATH=/path/to/student/func_1 TEST_DIR=1_sort_32_uint run
 ```
 
 The `run` target starts the executable with `TEST_DIR/bin` as its current
-working directory. This preserves the relative paths used by the existing test
-programs to access `test_arrays/`.
+working directory. This preserves the relative paths used by the sorting tests
+to access `test_arrays/`.
 
 Remove generated files for one test:
 
