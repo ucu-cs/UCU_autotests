@@ -105,6 +105,12 @@ student implementation. For example, a Windows implementation should be tested
 with the corresponding Windows/MSYS2 MINGW64 toolchain, while a Linux
 implementation should be tested with a Linux toolchain.
 
+The harness invokes `func` through the target C ABI, but passing the functional
+tests is not an exhaustive ABI-conformance check. In particular, the harness
+does not deliberately verify preservation of every callee-saved register, stack
+alignment, or stack discipline. Check these requirements separately when
+reviewing a submission.
+
 ## Test directories
 
 The directories `1_sort_32_uint` through `15_sum_digits_32_uint` correspond to
