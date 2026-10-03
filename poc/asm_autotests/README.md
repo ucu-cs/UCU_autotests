@@ -32,6 +32,36 @@ without linking the student's demonstration program into the test executable.
 Each test directory contains `src/test.c`. Test data are stored under
 `test_arrays/`.
 
+## Checking a student's lab
+
+From `poc/asm_autotests`, run the test directory that corresponds to the
+student's assigned variant:
+
+```shell
+make FUNC_PATH=/absolute/path/to/student/repository/func_1 \
+     TEST_DIR=5_axb_32_int \
+     run
+```
+
+- `FUNC_PATH` points to the student's `func_1`, `func_2`, or `func_3`
+  directory.
+- `TEST_DIR` is the autotest directory for the corresponding assigned
+  variant.
+- Repeat the command for all three functions in the student's lab.
+
+For example, if `func_1` is variant 5, `func_2` is variant 9, and `func_3`
+is variant 15:
+
+```shell
+make FUNC_PATH=/path/to/student/repository/func_1 TEST_DIR=5_axb_32_int run
+make FUNC_PATH=/path/to/student/repository/func_2 TEST_DIR=9_mean_32_uint run
+make FUNC_PATH=/path/to/student/repository/func_3 TEST_DIR=15_sum_digits_32_uint run
+```
+
+The harness compiles the student's assembly sources directly. Passing these
+tests therefore does not verify the student's own `makefile` or the required
+C, assembly, and Python demonstration programs; check those separately.
+
 ## Building and running a test
 
 Run `make` from this `asm_autotests` directory. Both `FUNC_PATH` and `TEST_DIR`
